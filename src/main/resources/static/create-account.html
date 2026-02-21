@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>LibraryMS — Manage Users</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+	<style>
+		body {
+			background: #f8f9fa;
+			font-family: sans-serif;
+		}
+
+		.navbar {
+			background: #fff;
+			border-bottom: 1px solid #dee2e6;
+		}
+
+		.navbar-brand {
+			font-weight: 700;
+			font-size: 1.3rem;
+		}
+
+		.card {
+			border: 1px solid #dee2e6;
+			border-radius: 8px;
+		}
+
+		footer {
+			background: #212529;
+			color: #adb5bd;
+			text-align: center;
+			padding: 1.5rem;
+			font-size: 0.85rem;
+			margin-top: 3rem;
+		}
+	</style>
+</head>
+
+<body>
+
+	<nav class="navbar navbar-expand-lg sticky-top">
+		<div class="container">
+			<a class="navbar-brand" href="index.html">LibraryMS</a>
+			<div class="ms-auto">
+				<a href="index.html" class="btn btn-outline-secondary btn-sm">← Back to Home</a>
+			</div>
+		</div>
+	</nav>
+
+	<div class="container py-5">
+		<h2 class="fw-bold mb-1">User Management</h2>
+		<p class="text-muted mb-4">Create accounts and manage user roles.</p>
+
+		<div class="row g-4">
+
+			<!-- CREATE USER FORM -->
+			<div class="col-md-5">
+				<div class="card p-4">
+					<h5 class="fw-semibold mb-3">Create New Account</h5>
+
+					<div id="alertError" class="alert alert-danger d-none"></div>
+					<div id="alertSuccess" class="alert alert-success d-none">Account created successfully!</div>
+
+					<div class="mb-3">
+						<label class="form-label">Full Name</label>
+						<input type="text" id="fullName" class="form-control"/>
+						<div class="invalid-feedback" id="errName">Name is required.</div>
+					</div>
+
+					<div class="mb-3">
+						<label class="form-label">Email Address</label>
+						<input type="email" id="email" class="form-control"/>
+						<div class="invalid-feedback" id="errEmail">A valid email is required.</div>
+					</div>
+
+					<div class="mb-4">
+						<label class="form-label">Role</label>
+						<select id="roleSelect" class="form-select">
+							<option value="STUDENT">Student</option>
+							<option value="LIBRARIAN">Librarian</option>
+						</select>
+					</div>
+
+					<button class="btn btn-primary w-100" onclick="submitCreateUser()" id="submitBtn">
+						<i class="bi bi-person-plus-fill me-1"></i> Create Account
+					</button>
+
+					<!-- Credential card shown after success -->
+					<div id="credentialCard" class="alert alert-dark mt-3 d-none">
+						<strong><i class="bi bi-key-fill"></i> Login Credentials</strong>
+						<hr class="my-2" />
+						<div class="small">
+							<div><span class="text-secondary">Name:</span> <span id="credName"></span></div>
+							<div><span class="text-secondary">Email:</span> <span id="credEmail"></span></div>
+							<div><span class="text-secondary">Temp Password:</span> <span id="credPassword"
+									class="fw-bold"></span></div>
+							<div><span class="text-secondary">Role:</span> <span id="credRole"></span></div>
+						</div>
+						<p class="text-secondary small mt-2 mb-0">Share these with the user. They should change their
+							password on first login.</p>
+					</div>
+				</div>
+			</div>
+
+			<!-- USERS TABLE -->
+			<div class="col-md-7">
+				<div class="card p-4">
+					<div class="d-flex justify-content-between align-items-center mb-3">
+						<h5 class="fw-semibold mb-0">Existing Users</h5>
+						<span class="text-muted small" id="userCountLabel">0 users</span>
+					</div>
+					<table class="table table-bordered table-hover mb-0">
+						<thead class="table-light">
+							<tr>
+								<th>Name</th>
+								<th>Email</th>
+								<th>Role</th>
+								<th>Action</th>
+							</tr>
+						</thead>
+						<tbody id="usersTableBody">
+							<tr id="emptyRow">
+								<td colspan="4" class="text-center text-muted py-3 small">No users yet. Create one.</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+		</div>
+	</div>
+
+	<footer>LibraryMS &mdash; MASE 2026</footer>
+
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+	<script>
+		let users = [];
+
+		function validateForm() {
+			let valid = true;
+			const name = document.getElementById('fullName');
+			const email = document.getElementById('email');
+			const errName = document.getElementById('errName');
+			const errEmail = document.getElementById('errEmail');
+
+			if (!name.value.trim()) {
+				name.classList.add('is-invalid'); valid = false;
+			} else {name.classList.remove('is-invalid');}
+
+			const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim());
+			if (!emailOk) {
+				email.classList.add('is-invalid'); valid = false;
+			} else {email.classList.remove('is-invalid');}
+
+			return valid;
+		}
+
+		async function submitCreateUser() {
+			hideAlerts();
+			if (!validateForm()) return;
+
+			const name = document.getElementById('fullName').value.trim();
+			const email = document.getElementById('email').value.trim();
+			const role = document.getElementById('roleSelect').value;
+
+			try {
+				const response = await fetch('/api/users', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'Authorization': 'Bearer ' + (localStorage.getItem('jwt_token') || '')
+					},
+					body: JSON.stringify({name, email, role})
+				});
+				const data = await response.json();
+
+				if (response.status === 409) {
+					showError(data.error || 'Email already registered');
+				} else if (response.status === 201) {
+					showSuccess(data);
+					addUser(data);
+					resetForm();
+				} else {
+					showError('Something went wrong. Please try again.');
+				}
+			} catch (err) {
+				// Dev mock — remove when API is live
+				mockCreate(name, email, role);
+			}
+		}
+
+		function mockCreate(name, email, role) {
+			if (users.find(u => u.email === email)) {
+				showError('Email already registered'); return;
+			}
+			const user = {
+				id: users.length + 1, name, email, role,
+				temporaryPassword: Math.random().toString(36).slice(2, 10)
+			};
+			showSuccess(user);
+			addUser(user);
+			resetForm();
+		}
+
+		async function updateRole(id, currentRole) {
+			const newRole = currentRole === 'STUDENT' ? 'LIBRARIAN' : 'STUDENT';
+			if (!confirm(`Change role to ${newRole}?`)) return;
+			try {
+				await fetch(`/api/users/${id}/role`, {
+					method: 'PATCH',
+					headers: {'Content-Type': 'application/json'},
+					body: JSON.stringify({role: newRole})
+				});
+			} catch (e) { /* dev: fall through to mock */}
+			const u = users.find(u => u.id === id);
+			if (u) {u.role = newRole; renderTable();}
+		}
+
+		function addUser(user) {
+			users.push(user);
+			renderTable();
+		}
+
+		function renderTable() {
+			const tbody = document.getElementById('usersTableBody');
+			document.getElementById('userCountLabel').textContent = users.length + ' user' + (users.length !== 1 ? 's' : '');
+			if (users.length === 0) {
+				tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3 small">No users yet.</td></tr>`;
+				return;
+			}
+			tbody.innerHTML = users.map(u => `
+      <tr>
+        <td>${esc(u.name)}</td>
+        <td class="text-muted small">${esc(u.email)}</td>
+        <td><span class="badge ${u.role === 'LIBRARIAN' ? 'bg-dark' : 'bg-secondary'}">${u.role}</span></td>
+        <td>
+          <button class="btn btn-outline-secondary btn-sm" onclick="updateRole(${u.id}, '${u.role}')">
+            Make ${u.role === 'STUDENT' ? 'Librarian' : 'Student'}
+          </button>
+        </td>
+      </tr>
+    `).join('');
+		}
+
+		function showError(msg) {
+			const el = document.getElementById('alertError');
+			el.textContent = msg; el.classList.remove('d-none');
+			document.getElementById('alertSuccess').classList.add('d-none');
+			document.getElementById('credentialCard').classList.add('d-none');
+		}
+
+		function showSuccess(user) {
+			document.getElementById('alertSuccess').classList.remove('d-none');
+			document.getElementById('alertError').classList.add('d-none');
+			document.getElementById('credName').textContent = user.name;
+			document.getElementById('credEmail').textContent = user.email;
+			document.getElementById('credPassword').textContent = user.temporaryPassword || '(emailed)';
+			document.getElementById('credRole').textContent = user.role;
+			document.getElementById('credentialCard').classList.remove('d-none');
+		}
+
+		function hideAlerts() {
+			document.getElementById('alertError').classList.add('d-none');
+			document.getElementById('alertSuccess').classList.add('d-none');
+			document.getElementById('credentialCard').classList.add('d-none');
+		}
+
+		function resetForm() {
+			document.getElementById('fullName').value = '';
+			document.getElementById('email').value = '';
+			document.getElementById('roleSelect').value = 'STUDENT';
+		}
+
+		function esc(str) {
+			return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+		}
+	</script>
+</body>
+
+</html>
