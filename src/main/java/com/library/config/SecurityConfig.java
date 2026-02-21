@@ -16,6 +16,7 @@ public class SecurityConfig {
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http.csrf(csrf -> csrf.disable())
 				.authorizeHttpRequests(auth -> auth.requestMatchers("/index.html", "/", "/css/**", "/js/**").permitAll()
+						.requestMatchers("/index.html", "/", "/css/**", "/js/**", "/api/auth/me").permitAll()
 						.requestMatchers("/create-account.html", "/api/users/**").hasRole("LIBRARIAN").anyRequest()
 						.authenticated())
 				.formLogin(form -> form.defaultSuccessUrl("/index.html", true).permitAll())
