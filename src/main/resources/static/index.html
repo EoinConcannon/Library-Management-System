@@ -84,17 +84,13 @@
 		<div class="container">
 			<a class="navbar-brand" href="index.html">LibraryMS</a>
 			<div class="ms-auto d-flex gap-2 align-items-center">
-				<a href="#" class="btn btn-outline-secondary btn-sm">Catalogue</a>
+				<a href="catalogue.html" class="btn btn-outline-secondary btn-sm">Catalogue</a>
 				<a href="#" class="btn btn-outline-secondary btn-sm">My Books</a>
-
-				<!-- Shown only to librarians -->
+				<a href="book-management.html" id="bookMgmtBtn" class="btn btn-outline-secondary btn-sm d-none">Book
+					Management</a>
 				<a href="create-account.html" id="manageUsersBtn" class="btn btn-outline-secondary btn-sm d-none">Manage
 					Users</a>
-
-				<!-- Logged out state -->
 				<a href="/login" id="loginBtn" class="btn btn-primary btn-sm">Login</a>
-
-				<!-- Logged in state -->
 				<span id="navUsername" class="text-muted small d-none"></span>
 				<a href="/logout" id="logoutBtn" class="btn btn-outline-danger btn-sm d-none">Logout</a>
 			</div>
@@ -177,7 +173,8 @@
 
 					// Only show Manage Users to librarians
 					if (user.role === 'LIBRARIAN') {
-						document.getElementById('manageUsersBtn').classList.remove('d-none');
+					  document.getElementById('manageUsersBtn').classList.remove('d-none');
+					  document.getElementById('bookMgmtBtn').classList.remove('d-none');
 					}
 				}
 			})
