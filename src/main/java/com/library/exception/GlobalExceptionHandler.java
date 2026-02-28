@@ -34,4 +34,11 @@ public class GlobalExceptionHandler {
 		error.put("error", ex.getMessage());
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
 	}
+
+	@ExceptionHandler(BookAlreadyExistsException.class)
+	public ResponseEntity<Map<String, String>> handleBookExists(BookAlreadyExistsException ex) {
+		Map<String, String> error = new HashMap<>();
+		error.put("error", ex.getMessage());
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+	}
 }
