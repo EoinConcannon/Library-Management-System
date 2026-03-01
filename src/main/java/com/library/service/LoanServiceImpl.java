@@ -95,7 +95,7 @@ public class LoanServiceImpl implements LoanService {
 		long totalBooks = bookRepository.count();
 		long activeBorrows = loanRepository.countByReturnedFalse();
 		long completedReturns = loanRepository.countByReturnedTrue();
-		long availableBooks = totalBooks - activeBorrows;
+		long availableBooks = bookRepository.countByAvailableTrue();
 
 		stats.put("totalBooks", totalBooks);
 		stats.put("activeBorrows", activeBorrows);

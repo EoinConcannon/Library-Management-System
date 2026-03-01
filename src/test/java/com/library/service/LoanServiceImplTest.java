@@ -188,6 +188,7 @@ class LoanServiceImplTest {
 		when(bookRepository.count()).thenReturn(10L);
 		when(loanRepository.countByReturnedFalse()).thenReturn(3L);
 		when(loanRepository.countByReturnedTrue()).thenReturn(7L);
+		when(bookRepository.countByAvailableTrue()).thenReturn(7L);
 		when(bookRepository.findAll()).thenReturn(Arrays.asList(mockBook));
 
 		Map<String, Object> stats = loanService.getLoanStats();
