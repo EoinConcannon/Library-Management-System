@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "books")
 @Data
@@ -28,4 +31,7 @@ public class Book {
 
 	@Column(nullable = false)
 	private boolean available = true;
+
+	@OneToMany(mappedBy = "book", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+	private List<Loan> loans = new ArrayList<>();
 }

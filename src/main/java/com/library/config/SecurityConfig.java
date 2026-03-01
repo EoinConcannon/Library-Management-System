@@ -1,31 +1,51 @@
 package com.library.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+	private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http.csrf(csrf -> csrf.disable())
+				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
-						.requestMatchers("/index.html", "/", "/css/**", "/js/**", "/api/auth/me").permitAll()
+						.requestMatchers("/index.html", "/", "/css/**", "/js/**", "/api/auth/**",
+								"/catalogue.html", "/login.html",
+								"/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**")
+						.permitAll()
 						.requestMatchers(org.springframework.http.HttpMethod.GET, "/api/books", "/api/books/**")
-						.permitAll().requestMatchers("/create-account.html", "/book-management.html", "/api/users/**")
-						.hasRole("LIBRARIAN").requestMatchers("/api/books/**").hasRole("LIBRARIAN").anyRequest()
-						.authenticated())
-				.formLogin(form -> form.defaultSuccessUrl("/index.html", true).permitAll())
-				.logout(logout -> logout.logoutSuccessUrl("/index.html").permitAll());
+						.permitAll()
+						.requestMatchers("/create-account.html", "/book-management.html", "/api/users/**")
+						.hasRole("LIBRARIAN")
+						.requestMatchers(org.springframework.http.HttpMethod.GET, "/api/loans/stats")
+						.permitAll()
+						.requestMatchers("/api/books/**").hasRole("LIBRARIAN")
+						.anyRequest().authenticated())
+				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 		return http.build();
+	}
+
+	@Bean
+	public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+		return config.getAuthenticationManager();
 	}
 
 	@Bean
