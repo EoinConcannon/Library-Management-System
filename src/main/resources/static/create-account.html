@@ -7,6 +7,7 @@
 	<title>LibraryMS — Manage Users</title>
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+	<link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet" />
 	<style>
 		body {
 			background: #f8f9fa;
@@ -43,8 +44,12 @@
 	<nav class="navbar navbar-expand-lg sticky-top">
 		<div class="container">
 			<a class="navbar-brand" href="index.html">LibraryMS</a>
-			<div class="ms-auto">
-				<a href="index.html" class="btn btn-outline-secondary btn-sm">← Back to Home</a>
+			<div class="ms-auto d-flex gap-2 align-items-center">
+				<a href="catalogue.html" class="btn btn-outline-secondary btn-sm">Catalogue</a>
+				<a href="book-management.html" class="btn btn-outline-secondary btn-sm">Book Management</a>
+				<a href="create-account.html" class="btn btn-outline-secondary btn-sm">Manage Users</a>
+				<span id="navUsername" class="text-muted small d-none"></span>
+				<a href="#" class="btn btn-outline-danger btn-sm" onclick="handleLogout()">Logout</a>
 			</div>
 		</div>
 	</nav>
@@ -58,7 +63,7 @@
 			<!-- CREATE USER FORM -->
 			<div class="col-md-5">
 				<div class="card p-4">
-					<h5 class="fw-semibold mb-3">Create New Account</h5>
+					<h5 class="fw-semibold mb-3"><i class="bi bi-person-plus-fill me-1"></i>Create New Account</h5>
 
 					<div id="alertError" class="alert alert-danger d-none"></div>
 					<div id="alertSuccess" class="alert alert-success d-none">Account created successfully!</div>
@@ -107,11 +112,8 @@
 			<!-- USERS TABLE -->
 			<div class="col-md-7">
 				<div class="card p-4">
-					<div class="d-flex justify-content-between align-items-center mb-3">
-						<h5 class="fw-semibold mb-0">Existing Users</h5>
-						<span class="text-muted small" id="userCountLabel">0 users</span>
-					</div>
-					<table class="table table-bordered table-hover mb-0">
+					<h5 class="fw-semibold mb-3"><i class="bi bi-people-fill me-1"></i>Existing Users</h5>
+					<table id="usersTable" class="table table-bordered table-hover" style="width:100%">
 						<thead class="table-light">
 							<tr>
 								<th>Name</th>
@@ -121,9 +123,6 @@
 							</tr>
 						</thead>
 						<tbody id="usersTableBody">
-							<tr id="emptyRow">
-								<td colspan="4" class="text-center text-muted py-3 small">No users yet. Create one.</td>
-							</tr>
 						</tbody>
 					</table>
 				</div>
@@ -134,147 +133,195 @@
 
 	<footer>LibraryMS &mdash; MASE 2026</footer>
 
+	<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+	<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+	<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 	<script>
 		let users = [];
+		let dataTable;
+
+		function getToken() { return localStorage.getItem('jwt_token'); }
+		function authHeaders() {
+			const token = getToken();
+			return token ? { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+		}
+		function handleLogout() {
+			localStorage.removeItem('jwt_token');
+			localStorage.removeItem('user_name');
+			localStorage.removeItem('user_role');
+			window.location.href = 'index.html';
+		}
+
+		$(document).ready(function () {
+			loadCurrentUser();
+			initDataTable();
+			loadUsers();
+		});
+
+		function initDataTable() {
+			dataTable = $('#usersTable').DataTable({
+				columns: [
+					{ data: 'name' },
+					{ data: 'email', className: 'text-muted small' },
+					{
+						data: 'role',
+						render: function (data) {
+							return '<span class="badge ' + (data === 'LIBRARIAN' ? 'bg-dark' : 'bg-secondary') + '">' + data + '</span>';
+						}
+					},
+					{
+						data: null,
+						orderable: false,
+						render: function (data) {
+							var newRole = data.role === 'STUDENT' ? 'Librarian' : 'Student';
+							return '<button class="btn btn-outline-secondary btn-sm btn-role" data-id="' + data.id + '" data-role="' + data.role + '">' +
+								'<i class="bi bi-arrow-repeat me-1"></i>Make ' + newRole + '</button>';
+						}
+					}
+				],
+				order: [[0, 'asc']],
+				language: {
+					emptyTable: 'No users yet. Create one using the form.',
+					zeroRecords: 'No matching users found.'
+				}
+			});
+
+			$('#usersTable').on('click', '.btn-role', function () {
+				updateRole($(this).data('id'), $(this).data('role'));
+			});
+		}
+
+		function loadCurrentUser() {
+			var token = getToken();
+			if (!token) return;
+			$.ajax({
+				url: '/api/auth/me',
+				headers: authHeaders(),
+				success: function (user) {
+					if (user && user.name) {
+						$('#navUsername').text('👤 ' + user.name).removeClass('d-none');
+					}
+				}
+			});
+		}
+
+		function loadUsers() {
+			$.ajax({
+				url: '/api/users',
+				headers: authHeaders(),
+				success: function (data) {
+					users = data;
+					renderTable();
+				},
+				error: function () {
+					users = [];
+					renderTable();
+				}
+			});
+		}
 
 		function validateForm() {
-			let valid = true;
-			const name = document.getElementById('fullName');
-			const email = document.getElementById('email');
-			const errName = document.getElementById('errName');
-			const errEmail = document.getElementById('errEmail');
+			var valid = true;
+			var $name = $('#fullName');
+			var $email = $('#email');
 
-			if (!name.value.trim()) {
-				name.classList.add('is-invalid'); valid = false;
-			} else {name.classList.remove('is-invalid');}
+			if (!$name.val().trim()) { $name.addClass('is-invalid'); valid = false; }
+			else $name.removeClass('is-invalid');
 
-			const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim());
-			if (!emailOk) {
-				email.classList.add('is-invalid'); valid = false;
-			} else {email.classList.remove('is-invalid');}
+			var emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($email.val().trim());
+			if (!emailOk) { $email.addClass('is-invalid'); valid = false; }
+			else $email.removeClass('is-invalid');
 
 			return valid;
 		}
 
-		async function submitCreateUser() {
+		function submitCreateUser() {
 			hideAlerts();
 			if (!validateForm()) return;
 
-			const name = document.getElementById('fullName').value.trim();
-			const email = document.getElementById('email').value.trim();
-			const role = document.getElementById('roleSelect').value;
-
-			try {
-				const response = await fetch('/api/users', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						'Authorization': 'Bearer ' + (localStorage.getItem('jwt_token') || '')
-					},
-					body: JSON.stringify({name, email, role})
-				});
-				const data = await response.json();
-
-				if (response.status === 409) {
-					showError(data.error || 'Email already registered');
-				} else if (response.status === 201) {
-					showSuccess(data);
-					addUser(data);
-					resetForm();
-				} else {
-					showError('Something went wrong. Please try again.');
-				}
-			} catch (err) {
-				// Dev mock — remove when API is live
-				mockCreate(name, email, role);
-			}
-		}
-
-		function mockCreate(name, email, role) {
-			if (users.find(u => u.email === email)) {
-				showError('Email already registered'); return;
-			}
-			const user = {
-				id: users.length + 1, name, email, role,
-				temporaryPassword: Math.random().toString(36).slice(2, 10)
+			var payload = {
+				name: $('#fullName').val().trim(),
+				email: $('#email').val().trim(),
+				role: $('#roleSelect').val()
 			};
-			showSuccess(user);
-			addUser(user);
-			resetForm();
+
+			$.ajax({
+				url: '/api/users',
+				method: 'POST',
+				headers: authHeaders(),
+				data: JSON.stringify(payload),
+				success: function (data) {
+					showSuccess(data);
+					users.push(data);
+					renderTable();
+					resetForm();
+				},
+				error: function (xhr) {
+					if (xhr.status === 409) {
+						showError(xhr.responseJSON ? xhr.responseJSON.error : 'Email already registered');
+					} else {
+						showError('Something went wrong. Please try again.');
+					}
+				}
+			});
 		}
 
-		async function updateRole(id, currentRole) {
-			const newRole = currentRole === 'STUDENT' ? 'LIBRARIAN' : 'STUDENT';
-			if (!confirm(`Change role to ${newRole}?`)) return;
-			try {
-				await fetch(`/api/users/${id}/role`, {
-					method: 'PATCH',
-					headers: {'Content-Type': 'application/json'},
-					body: JSON.stringify({role: newRole})
-				});
-			} catch (e) { /* dev: fall through to mock */}
-			const u = users.find(u => u.id === id);
-			if (u) {u.role = newRole; renderTable();}
-		}
-
-		function addUser(user) {
-			users.push(user);
-			renderTable();
+		function updateRole(id, currentRole) {
+			var newRole = currentRole === 'STUDENT' ? 'LIBRARIAN' : 'STUDENT';
+			if (!confirm('Change role to ' + newRole + '?')) return;
+			$.ajax({
+				url: '/api/users/' + id + '/role',
+				method: 'PATCH',
+				headers: authHeaders(),
+				data: JSON.stringify({ role: newRole }),
+				success: function () {
+					var u = users.find(function (u) { return u.id === id; });
+					if (u) { u.role = newRole; renderTable(); }
+				},
+				error: function () {
+					var u = users.find(function (u) { return u.id === id; });
+					if (u) { u.role = newRole; renderTable(); }
+				}
+			});
 		}
 
 		function renderTable() {
-			const tbody = document.getElementById('usersTableBody');
-			document.getElementById('userCountLabel').textContent = users.length + ' user' + (users.length !== 1 ? 's' : '');
-			if (users.length === 0) {
-				tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3 small">No users yet.</td></tr>`;
-				return;
-			}
-			tbody.innerHTML = users.map(u => `
-      <tr>
-        <td>${esc(u.name)}</td>
-        <td class="text-muted small">${esc(u.email)}</td>
-        <td><span class="badge ${u.role === 'LIBRARIAN' ? 'bg-dark' : 'bg-secondary'}">${u.role}</span></td>
-        <td>
-          <button class="btn btn-outline-secondary btn-sm" onclick="updateRole(${u.id}, '${u.role}')">
-            Make ${u.role === 'STUDENT' ? 'Librarian' : 'Student'}
-          </button>
-        </td>
-      </tr>
-    `).join('');
+			dataTable.clear();
+			dataTable.rows.add(users);
+			dataTable.draw();
 		}
 
 		function showError(msg) {
-			const el = document.getElementById('alertError');
-			el.textContent = msg; el.classList.remove('d-none');
-			document.getElementById('alertSuccess').classList.add('d-none');
-			document.getElementById('credentialCard').classList.add('d-none');
+			$('#alertError').text(msg).removeClass('d-none');
+			$('#alertSuccess').addClass('d-none');
+			$('#credentialCard').addClass('d-none');
 		}
 
 		function showSuccess(user) {
-			document.getElementById('alertSuccess').classList.remove('d-none');
-			document.getElementById('alertError').classList.add('d-none');
-			document.getElementById('credName').textContent = user.name;
-			document.getElementById('credEmail').textContent = user.email;
-			document.getElementById('credPassword').textContent = user.temporaryPassword || '(emailed)';
-			document.getElementById('credRole').textContent = user.role;
-			document.getElementById('credentialCard').classList.remove('d-none');
+			$('#alertSuccess').removeClass('d-none');
+			$('#alertError').addClass('d-none');
+			$('#credName').text(user.name);
+			$('#credEmail').text(user.email);
+			$('#credPassword').text(user.temporaryPassword || '(emailed)');
+			$('#credRole').text(user.role);
+			$('#credentialCard').removeClass('d-none');
 		}
 
 		function hideAlerts() {
-			document.getElementById('alertError').classList.add('d-none');
-			document.getElementById('alertSuccess').classList.add('d-none');
-			document.getElementById('credentialCard').classList.add('d-none');
+			$('#alertError').addClass('d-none');
+			$('#alertSuccess').addClass('d-none');
+			$('#credentialCard').addClass('d-none');
 		}
 
 		function resetForm() {
-			document.getElementById('fullName').value = '';
-			document.getElementById('email').value = '';
-			document.getElementById('roleSelect').value = 'STUDENT';
+			$('#fullName').val('');
+			$('#email').val('');
+			$('#roleSelect').val('STUDENT');
 		}
 
 		function esc(str) {
-			return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+			return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 		}
 	</script>
 </body>

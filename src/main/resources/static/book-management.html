@@ -7,6 +7,7 @@
 	<title>LibraryMS — Book Management</title>
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+	<link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet" />
 	<style>
 		body {
 			background: #f8f9fa;
@@ -46,11 +47,11 @@
 			<a class="navbar-brand" href="index.html">LibraryMS</a>
 			<div class="ms-auto d-flex gap-2 align-items-center">
 				<a href="catalogue.html" class="btn btn-outline-secondary btn-sm">Catalogue</a>
-				<a href="#" class="btn btn-outline-secondary btn-sm">My Books</a>
+				<a href="my-books.html" class="btn btn-outline-secondary btn-sm">My Books</a>
 				<a href="book-management.html" class="btn btn-outline-secondary btn-sm">Book Management</a>
 				<a href="create-account.html" class="btn btn-outline-secondary btn-sm">Manage Users</a>
 				<span id="navUsername" class="text-muted small d-none"></span>
-				<a href="/logout" class="btn btn-outline-danger btn-sm">Logout</a>
+				<a href="#" class="btn btn-outline-danger btn-sm" onclick="handleLogout()">Logout</a>
 			</div>
 		</div>
 	</nav>
@@ -64,7 +65,7 @@
 			<!-- ADD / EDIT FORM -->
 			<div class="col-md-4">
 				<div class="card p-4">
-					<h5 class="fw-semibold mb-3" id="formTitle">Add New Book</h5>
+					<h5 class="fw-semibold mb-3" id="formTitle"><i class="bi bi-plus-circle me-1"></i>Add New Book</h5>
 
 					<div id="alertError" class="alert alert-danger d-none"></div>
 					<div id="alertSuccess" class="alert alert-success d-none"></div>
@@ -117,11 +118,8 @@
 			<!-- BOOKS TABLE -->
 			<div class="col-md-8">
 				<div class="card p-4">
-					<div class="d-flex justify-content-between align-items-center mb-3">
-						<h5 class="fw-semibold mb-0">All Books</h5>
-						<span class="text-muted small" id="bookCountLabel">0 books</span>
-					</div>
-					<table class="table table-bordered table-hover mb-0">
+					<h5 class="fw-semibold mb-3"><i class="bi bi-table me-1"></i>All Books</h5>
+					<table id="booksTable" class="table table-bordered table-hover" style="width:100%">
 						<thead class="table-light">
 							<tr>
 								<th>Title</th>
@@ -133,9 +131,6 @@
 							</tr>
 						</thead>
 						<tbody id="booksTableBody">
-							<tr>
-								<td colspan="6" class="text-center text-muted py-3 small">No books yet.</td>
-							</tr>
 						</tbody>
 					</table>
 				</div>
@@ -149,7 +144,7 @@
 		<div class="modal-dialog modal-dialog-centered">
 			<div class="modal-content">
 				<div class="modal-header">
-					<h5 class="modal-title">Delete Book</h5>
+					<h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill text-danger me-1"></i>Delete Book</h5>
 					<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
 				</div>
 				<div class="modal-body">
@@ -157,7 +152,7 @@
 				</div>
 				<div class="modal-footer">
 					<button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-					<button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+					<button class="btn btn-danger" id="confirmDeleteBtn"><i class="bi bi-trash me-1"></i>Delete</button>
 				</div>
 			</div>
 		</div>
@@ -165,126 +160,170 @@
 
 	<footer>LibraryMS &mdash; MASE 2026</footer>
 
+	<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+	<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+	<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 	<script>
 		let books = [];
 		let deleteModal;
 		let pendingDeleteId = null;
+		let dataTable;
 
-		document.addEventListener('DOMContentLoaded', () => {
+		function getToken() { return localStorage.getItem('jwt_token'); }
+		function authHeaders() {
+			const token = getToken();
+			return token ? { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+		}
+		function handleLogout() {
+			localStorage.removeItem('jwt_token');
+			localStorage.removeItem('user_name');
+			localStorage.removeItem('user_role');
+			window.location.href = 'index.html';
+		}
+
+		$(document).ready(function () {
 			deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-			document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDelete);
+			$('#confirmDeleteBtn').on('click', confirmDelete);
 			loadCurrentUser();
+			initDataTable();
 			loadBooks();
 		});
 
-		function loadCurrentUser() {
-			fetch('/api/auth/me')
-				.then(r => r.json())
-				.then(user => {
-					if (user && user.name) {
-						document.getElementById('navUsername').textContent = '👤 ' + user.name;
-						document.getElementById('navUsername').classList.remove('d-none');
+		function initDataTable() {
+			dataTable = $('#booksTable').DataTable({
+				columns: [
+					{ data: 'title' },
+					{ data: 'author' },
+					{ data: 'genre' },
+					{ data: 'isbn', className: 'text-muted small' },
+					{
+						data: 'available',
+						render: function (data) {
+							return '<span class="badge ' + (data ? 'bg-success' : 'bg-danger') + '">' +
+								(data ? 'Available' : 'Borrowed') + '</span>';
+						}
+					},
+					{
+						data: null,
+						orderable: false,
+						render: function (data) {
+							return '<button class="btn btn-outline-primary btn-sm me-1 btn-edit" data-id="' + data.id + '">' +
+								'<i class="bi bi-pencil"></i></button>' +
+								'<button class="btn btn-outline-danger btn-sm btn-delete" data-id="' + data.id + '" data-title="' + esc(data.title) + '">' +
+								'<i class="bi bi-trash"></i></button>';
+						}
 					}
-				}).catch(() => { });
+				],
+				order: [[0, 'asc']],
+				language: {
+					emptyTable: 'No books yet. Add one using the form.',
+					zeroRecords: 'No matching books found.'
+				}
+			});
+
+			$('#booksTable').on('click', '.btn-edit', function () {
+				editBook($(this).data('id'));
+			});
+			$('#booksTable').on('click', '.btn-delete', function () {
+				promptDelete($(this).data('id'), $(this).data('title'));
+			});
 		}
 
-		async function loadBooks() {
-			try {
-				const res = await fetch('/api/books');
-				books = await res.json();
-				renderTable();
-			} catch (e) {
-				// dev mock
-				books = [];
-				renderTable();
-			}
+		function loadCurrentUser() {
+			const token = getToken();
+			if (!token) return;
+			$.ajax({
+				url: '/api/auth/me',
+				headers: authHeaders(),
+				success: function (user) {
+					if (user && user.name) {
+						$('#navUsername').text('👤 ' + user.name).removeClass('d-none');
+					}
+				}
+			});
+		}
+
+		function loadBooks() {
+			$.ajax({
+				url: '/api/books',
+				success: function (data) {
+					books = data;
+					renderTable();
+				},
+				error: function () {
+					books = [];
+					renderTable();
+				}
+			});
 		}
 
 		function validateForm() {
 			let valid = true;
-			['title', 'author', 'isbn'].forEach(id => {
-				const el = document.getElementById(id);
-				if (!el.value.trim()) {el.classList.add('is-invalid'); valid = false;}
-				else el.classList.remove('is-invalid');
+			$.each(['title', 'author', 'isbn'], function (i, id) {
+				var $el = $('#' + id);
+				if (!$el.val().trim()) { $el.addClass('is-invalid'); valid = false; }
+				else $el.removeClass('is-invalid');
 			});
-			const genre = document.getElementById('genre');
-			if (!genre.value) {genre.classList.add('is-invalid'); valid = false;}
-			else genre.classList.remove('is-invalid');
+			var $genre = $('#genre');
+			if (!$genre.val()) { $genre.addClass('is-invalid'); valid = false; }
+			else $genre.removeClass('is-invalid');
 			return valid;
 		}
 
-		async function submitBook() {
+		function submitBook() {
 			hideAlerts();
 			if (!validateForm()) return;
 
-			const payload = {
-				title: document.getElementById('title').value.trim(),
-				author: document.getElementById('author').value.trim(),
-				isbn: document.getElementById('isbn').value.trim(),
-				genre: document.getElementById('genre').value
+			var payload = {
+				title: $('#title').val().trim(),
+				author: $('#author').val().trim(),
+				isbn: $('#isbn').val().trim(),
+				genre: $('#genre').val()
 			};
 
-			const editingId = document.getElementById('editingId').value;
-			const isEdit = !!editingId;
-			const url = isEdit ? `/api/books/${editingId}` : '/api/books';
-			const method = isEdit ? 'PUT' : 'POST';
+			var editingId = $('#editingId').val();
+			var isEdit = !!editingId;
+			var url = isEdit ? '/api/books/' + editingId : '/api/books';
+			var method = isEdit ? 'PUT' : 'POST';
 
-			try {
-				const res = await fetch(url, {
-					method,
-					headers: {'Content-Type': 'application/json'},
-					body: JSON.stringify(payload)
-				});
-				const data = await res.json();
-
-				if (res.status === 409) {
-					showError(data.error || 'Book already exists');
-				} else if (res.status === 201 || res.ok) {
+			$.ajax({
+				url: url,
+				method: method,
+				headers: authHeaders(),
+				data: JSON.stringify(payload),
+				success: function (data) {
 					showSuccess(isEdit ? 'Book updated successfully!' : 'Book added successfully!');
 					if (isEdit) {
-						books = books.map(b => b.id == editingId ? data : b);
+						books = books.map(function (b) { return b.id == editingId ? data : b; });
 					} else {
 						books.push(data);
 					}
 					renderTable();
 					resetForm();
-				} else {
-					showError('Something went wrong.');
+				},
+				error: function (xhr) {
+					if (xhr.status === 409) {
+						showError(xhr.responseJSON ? xhr.responseJSON.error : 'Book already exists');
+					} else {
+						showError('Something went wrong.');
+					}
 				}
-			} catch (e) {
-				// dev mock
-				mockSubmit(payload, editingId);
-			}
-		}
-
-		function mockSubmit(payload, editingId) {
-			if (!editingId && books.find(b => b.isbn === payload.isbn)) {
-				showError('Book already exists'); return;
-			}
-			if (editingId) {
-				books = books.map(b => b.id == editingId ? {...b, ...payload} : b);
-				showSuccess('Book updated successfully!');
-			} else {
-				books.push({id: books.length + 1, ...payload, available: true});
-				showSuccess('Book added successfully!');
-			}
-			renderTable();
-			resetForm();
+			});
 		}
 
 		function editBook(id) {
-			const book = books.find(b => b.id === id);
+			var book = books.find(function (b) { return b.id === id; });
 			if (!book) return;
-			document.getElementById('editingId').value = id;
-			document.getElementById('title').value = book.title;
-			document.getElementById('author').value = book.author;
-			document.getElementById('isbn').value = book.isbn;
-			document.getElementById('genre').value = book.genre;
-			document.getElementById('formTitle').textContent = 'Edit Book';
-			document.getElementById('submitBtn').innerHTML = '<i class="bi bi-pencil me-1"></i> Save Changes';
-			document.getElementById('cancelBtn').classList.remove('d-none');
-			window.scrollTo({top: 0, behavior: 'smooth'});
+			$('#editingId').val(id);
+			$('#title').val(book.title);
+			$('#author').val(book.author);
+			$('#isbn').val(book.isbn);
+			$('#genre').val(book.genre);
+			$('#formTitle').html('<i class="bi bi-pencil-square me-1"></i>Edit Book');
+			$('#submitBtn').html('<i class="bi bi-pencil me-1"></i> Save Changes');
+			$('#cancelBtn').removeClass('d-none');
+			$('html, body').animate({ scrollTop: 0 }, 'smooth');
 		}
 
 		function cancelEdit() {
@@ -293,74 +332,62 @@
 
 		function promptDelete(id, title) {
 			pendingDeleteId = id;
-			document.getElementById('deleteBookTitle').textContent = title;
+			$('#deleteBookTitle').text(title);
 			deleteModal.show();
 		}
 
-		async function confirmDelete() {
+		function confirmDelete() {
 			deleteModal.hide();
-			try {
-				await fetch(`/api/books/${pendingDeleteId}`, {method: 'DELETE'});
-			} catch (e) { /* dev mock */}
-			books = books.filter(b => b.id !== pendingDeleteId);
-			renderTable();
-			showSuccess('Book deleted.');
-			pendingDeleteId = null;
+			$.ajax({
+				url: '/api/books/' + pendingDeleteId,
+				method: 'DELETE',
+				headers: authHeaders(),
+				success: function () {
+					books = books.filter(function (b) { return b.id !== pendingDeleteId; });
+					renderTable();
+					showSuccess('Book deleted.');
+					pendingDeleteId = null;
+				},
+				error: function () {
+					books = books.filter(function (b) { return b.id !== pendingDeleteId; });
+					renderTable();
+					showSuccess('Book deleted.');
+					pendingDeleteId = null;
+				}
+			});
 		}
 
 		function renderTable() {
-			const tbody = document.getElementById('booksTableBody');
-			document.getElementById('bookCountLabel').textContent = books.length + ' book' + (books.length !== 1 ? 's' : '');
-			if (books.length === 0) {
-				tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3 small">No books yet.</td></tr>`;
-				return;
-			}
-			tbody.innerHTML = books.map(b => `
-      <tr>
-        <td>${esc(b.title)}</td>
-        <td>${esc(b.author)}</td>
-        <td>${esc(b.genre)}</td>
-        <td class="text-muted small">${esc(b.isbn)}</td>
-        <td><span class="badge ${b.available ? 'bg-success' : 'bg-danger'}">${b.available ? 'Available' : 'Borrowed'}</span></td>
-        <td>
-          <button class="btn btn-outline-primary btn-sm me-1" onclick="editBook(${b.id})">
-            <i class="bi bi-pencil"></i>
-          </button>
-          <button class="btn btn-outline-danger btn-sm" onclick="promptDelete(${b.id}, '${esc(b.title)}')">
-            <i class="bi bi-trash"></i>
-          </button>
-        </td>
-      </tr>
-    `).join('');
+			dataTable.clear();
+			dataTable.rows.add(books);
+			dataTable.draw();
 		}
 
 		function showError(msg) {
-			const el = document.getElementById('alertError');
-			el.textContent = msg; el.classList.remove('d-none');
-			document.getElementById('alertSuccess').classList.add('d-none');
+			$('#alertError').text(msg).removeClass('d-none');
+			$('#alertSuccess').addClass('d-none');
 		}
 
 		function showSuccess(msg) {
-			const el = document.getElementById('alertSuccess');
-			el.textContent = msg; el.classList.remove('d-none');
-			document.getElementById('alertError').classList.add('d-none');
+			$('#alertSuccess').text(msg).removeClass('d-none');
+			$('#alertError').addClass('d-none');
 		}
 
 		function hideAlerts() {
-			document.getElementById('alertError').classList.add('d-none');
-			document.getElementById('alertSuccess').classList.add('d-none');
+			$('#alertError').addClass('d-none');
+			$('#alertSuccess').addClass('d-none');
 		}
 
 		function resetForm() {
-			document.getElementById('editingId').value = '';
-			document.getElementById('title').value = '';
-			document.getElementById('author').value = '';
-			document.getElementById('isbn').value = '';
-			document.getElementById('genre').value = '';
-			document.getElementById('formTitle').textContent = 'Add New Book';
-			document.getElementById('submitBtn').innerHTML = '<i class="bi bi-plus-lg me-1"></i> Add Book';
-			document.getElementById('cancelBtn').classList.add('d-none');
-			['title', 'author', 'isbn', 'genre'].forEach(id => document.getElementById(id).classList.remove('is-invalid'));
+			$('#editingId').val('');
+			$('#title').val('');
+			$('#author').val('');
+			$('#isbn').val('');
+			$('#genre').val('');
+			$('#formTitle').html('<i class="bi bi-plus-circle me-1"></i>Add New Book');
+			$('#submitBtn').html('<i class="bi bi-plus-lg me-1"></i> Add Book');
+			$('#cancelBtn').addClass('d-none');
+			$.each(['title', 'author', 'isbn', 'genre'], function (i, id) { $('#' + id).removeClass('is-invalid'); });
 		}
 
 		function esc(str) {

@@ -28,7 +28,7 @@ public class SecurityConfig {
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/index.html", "/", "/css/**", "/js/**", "/api/auth/**",
-								"/catalogue.html", "/login.html",
+								"/catalogue.html", "/login.html", "/my-books.html",
 								"/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**")
 						.permitAll()
 						.requestMatchers(org.springframework.http.HttpMethod.GET, "/api/books", "/api/books/**")

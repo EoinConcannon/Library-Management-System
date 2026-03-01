@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>LibraryMS — Login</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+	<style>
+		body {
+			background: #f8f9fa;
+			font-family: sans-serif;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			min-height: 100vh;
+		}
+
+		.login-card {
+			max-width: 400px;
+			width: 100%;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="login-card">
+		<div class="card shadow-sm p-4">
+			<div class="text-center mb-4">
+				<i class="bi bi-book-fill text-primary" style="font-size: 2.5rem;"></i>
+				<h3 class="fw-bold mt-2">LibraryMS</h3>
+				<p class="text-muted">Sign in to your account</p>
+			</div>
+
+			<div id="alertError" class="alert alert-danger d-none"></div>
+
+			<div class="mb-3">
+				<label class="form-label">Email Address</label>
+				<input type="email" id="email" class="form-control" placeholder="e.g. test@librarian.test" />
+			</div>
+			<div class="mb-4">
+				<label class="form-label">Password</label>
+				<input type="password" id="password" class="form-control" placeholder="Enter password" />
+			</div>
+
+			<button class="btn btn-primary w-100" onclick="handleLogin()" id="loginBtn">
+				<i class="bi bi-box-arrow-in-right me-1"></i> Sign In
+			</button>
+
+			<div class="text-center mt-3">
+				<a href="index.html" class="text-muted small">← Back to Home</a>
+			</div>
+		</div>
+	</div>
+
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+	<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+	<script>
+		$(document).ready(function () {
+			$('#password').on('keypress', function (e) {
+				if (e.which === 13) handleLogin();
+			});
+		});
+
+		async function handleLogin() {
+			const email = $('#email').val().trim();
+			const password = $('#password').val().trim();
+			$('#alertError').addClass('d-none');
+
+			if (!email || !password) {
+				$('#alertError').text('Please enter email and password.').removeClass('d-none');
+				return;
+			}
+
+			try {
+				const res = await fetch('/api/auth/login', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ email, password })
+				});
+				const data = await res.json();
+
+				if (res.ok) {
+					localStorage.setItem('jwt_token', data.token);
+					localStorage.setItem('user_name', data.name);
+					localStorage.setItem('user_role', data.role);
+					window.location.href = 'index.html';
+				} else {
+					$('#alertError').text(data.error || 'Login failed.').removeClass('d-none');
+				}
+			} catch (e) {
+				$('#alertError').text('Unable to connect to server.').removeClass('d-none');
+			}
+		}
+	</script>
+</body>
+
+</html>
