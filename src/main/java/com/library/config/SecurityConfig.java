@@ -27,15 +27,14 @@ public class SecurityConfig {
 				// No sessions — JWT is stateless
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
-						// Public pages and assets
-						.requestMatchers("/", "/index.html", "/catalogue.html", "/login.html", "/css/**", "/js/**")
+						// All static pages are public — JS handles role redirects
+						.requestMatchers("/", "/index.html", "/catalogue.html", "/login.html", "/create-account.html",
+								"/book-management.html", "/css/**", "/js/**")
 						.permitAll()
 						// Public API endpoints
 						.requestMatchers("/api/auth/login", "/api/auth/me").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/books", "/api/books/**").permitAll()
-						// Protected pages
-						.requestMatchers("/create-account.html", "/book-management.html").hasRole("LIBRARIAN")
-						// Protected API
+						// Protected API endpoints only
 						.requestMatchers("/api/users/**").hasRole("LIBRARIAN")
 						.requestMatchers(HttpMethod.POST, "/api/books/**").hasRole("LIBRARIAN")
 						.requestMatchers(HttpMethod.PUT, "/api/books/**").hasRole("LIBRARIAN")
