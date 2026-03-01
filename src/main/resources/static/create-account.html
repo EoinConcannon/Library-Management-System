@@ -43,8 +43,10 @@
 	<nav class="navbar navbar-expand-lg sticky-top">
 		<div class="container">
 			<a class="navbar-brand" href="index.html">LibraryMS</a>
-			<div class="ms-auto">
-				<a href="index.html" class="btn btn-outline-secondary btn-sm">← Back to Home</a>
+			<div class="ms-auto d-flex gap-2 align-items-center">
+			    <a href="index.html" class="btn btn-outline-secondary btn-sm">← Back to Home</a>
+			    <span id="navUsername" class="text-muted small d-none"></span>
+			    <a href="#" onclick="logout()" class="btn btn-outline-danger btn-sm">Logout</a>
 			</div>
 		</div>
 	</nav>
@@ -65,13 +67,13 @@
 
 					<div class="mb-3">
 						<label class="form-label">Full Name</label>
-						<input type="text" id="fullName" class="form-control"/>
+						<input type="text" id="fullName" class="form-control" />
 						<div class="invalid-feedback" id="errName">Name is required.</div>
 					</div>
 
 					<div class="mb-3">
 						<label class="form-label">Email Address</label>
-						<input type="email" id="email" class="form-control"/>
+						<input type="email" id="email" class="form-control" />
 						<div class="invalid-feedback" id="errEmail">A valid email is required.</div>
 					</div>
 
@@ -136,14 +138,66 @@
 
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 	<script>
+		function getToken() {
+			return localStorage.getItem('jwt_token') || '';
+		}
+
+		function authHeaders() {
+			return {
+				'Content-Type': 'application/json',
+				'Authorization': 'Bearer ' + getToken()
+			};
+		}
+
+		function logout() {
+			localStorage.removeItem('jwt_token');
+			localStorage.removeItem('user_name');
+			localStorage.removeItem('user_role');
+			window.location.href = '/login.html';
+		}
+
 		let users = [];
+
+		document.addEventListener('DOMContentLoaded', () => {
+			// Redirect if not logged in or not a librarian
+			const userRole = localStorage.getItem('user_role');
+			if (!userRole) {
+				window.location.href = '/login.html';
+				return;
+			}
+			if (userRole !== 'LIBRARIAN') {
+				window.location.href = '/index.html';
+				return;
+			}
+
+			// Show username in navbar
+			const userName = localStorage.getItem('user_name');
+			if (userName) {
+				document.getElementById('navUsername').textContent = '👤 ' + userName;
+				document.getElementById('navUsername').classList.remove('d-none');
+			}
+
+			loadUsers();
+		});
+
+		async function loadUsers() {
+			try {
+				const res = await fetch('/api/users', {
+					headers: authHeaders()
+				});
+				users = await res.json();
+				renderTable();
+			} catch (e) {
+				// API not live yet, start with empty list
+				users = [];
+				renderTable();
+			}
+		}
 
 		function validateForm() {
 			let valid = true;
 			const name = document.getElementById('fullName');
 			const email = document.getElementById('email');
-			const errName = document.getElementById('errName');
-			const errEmail = document.getElementById('errEmail');
 
 			if (!name.value.trim()) {
 				name.classList.add('is-invalid'); valid = false;
@@ -168,10 +222,7 @@
 			try {
 				const response = await fetch('/api/users', {
 					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						'Authorization': 'Bearer ' + (localStorage.getItem('jwt_token') || '')
-					},
+					headers: authHeaders(),
 					body: JSON.stringify({name, email, role})
 				});
 				const data = await response.json();
@@ -186,7 +237,6 @@
 					showError('Something went wrong. Please try again.');
 				}
 			} catch (err) {
-				// Dev mock — remove when API is live
 				mockCreate(name, email, role);
 			}
 		}
@@ -210,10 +260,10 @@
 			try {
 				await fetch(`/api/users/${id}/role`, {
 					method: 'PATCH',
-					headers: {'Content-Type': 'application/json'},
+					headers: authHeaders(),
 					body: JSON.stringify({role: newRole})
 				});
-			} catch (e) { /* dev: fall through to mock */}
+			} catch (e) { /* dev mock */}
 			const u = users.find(u => u.id === id);
 			if (u) {u.role = newRole; renderTable();}
 		}
@@ -231,17 +281,17 @@
 				return;
 			}
 			tbody.innerHTML = users.map(u => `
-      <tr>
-        <td>${esc(u.name)}</td>
-        <td class="text-muted small">${esc(u.email)}</td>
-        <td><span class="badge ${u.role === 'LIBRARIAN' ? 'bg-dark' : 'bg-secondary'}">${u.role}</span></td>
-        <td>
-          <button class="btn btn-outline-secondary btn-sm" onclick="updateRole(${u.id}, '${u.role}')">
-            Make ${u.role === 'STUDENT' ? 'Librarian' : 'Student'}
-          </button>
-        </td>
-      </tr>
-    `).join('');
+		        <tr>
+		            <td>${esc(u.name)}</td>
+		            <td class="text-muted small">${esc(u.email)}</td>
+		            <td><span class="badge ${u.role === 'LIBRARIAN' ? 'bg-dark' : 'bg-secondary'}">${u.role}</span></td>
+		            <td>
+		                <button class="btn btn-outline-secondary btn-sm" onclick="updateRole(${u.id}, '${u.role}')">
+		                    Make ${u.role === 'STUDENT' ? 'Librarian' : 'Student'}
+		                </button>
+		            </td>
+		        </tr>
+		    `).join('');
 		}
 
 		function showError(msg) {
