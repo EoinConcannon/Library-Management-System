@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>LibraryMS - Login</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+	<style>
+		body {
+			background: #f8f9fa;
+			font-family: sans-serif;
+		}
+
+		.login-card {
+			max-width: 400px;
+			margin: 100px auto;
+			background: #fff;
+			border: 1px solid #dee2e6;
+			border-radius: 8px;
+			padding: 2rem;
+		}
+
+		.brand {
+			font-weight: 700;
+			font-size: 1.4rem;
+			text-align: center;
+			margin-bottom: 1.5rem;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="container">
+		<div class="login-card">
+			<div class="brand">LibraryMS</div>
+			<h5 class="fw-semibold mb-3 text-center">Sign In</h5>
+
+			<div id="alertError" class="alert alert-danger d-none">Invalid email or password.</div>
+
+			<div class="mb-3">
+				<label class="form-label">Email</label>
+				<input type="email" id="email" class="form-control" />
+			</div>
+			<div class="mb-4">
+				<label class="form-label">Password</label>
+				<input type="password" id="password" class="form-control" onkeydown="if(event.key==='Enter') login()" />
+			</div>
+			<button class="btn btn-primary w-100" onclick="login()">Sign In</button>
+		</div>
+	</div>
+
+	<script>
+		async function login() {
+			const email = document.getElementById('email').value.trim();
+			const password = document.getElementById('password').value;
+			document.getElementById('alertError').classList.add('d-none');
+
+			try {
+				const res = await fetch('/api/auth/login', {
+					method: 'POST',
+					headers: {'Content-Type': 'application/json'},
+					body: JSON.stringify({email, password})
+				});
+
+				if (res.ok) {
+					const data = await res.json();
+					// Store token — used on every subsequent API call
+					localStorage.setItem('jwt_token', data.token);
+					localStorage.setItem('user_name', data.name);
+					localStorage.setItem('user_role', data.role);
+					window.location.href = '/index.html';
+				} else {
+					document.getElementById('alertError').classList.remove('d-none');
+				}
+			} catch (e) {
+				document.getElementById('alertError').classList.remove('d-none');
+			}
+		}
+	</script>
+</body>
+
+</html>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>LibraryMS - Catalogue</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+	<style>
+		body {
+			background: #f8f9fa;
+			font-family: sans-serif;
+		}
+
+		.navbar {
+			background: #fff;
+			border-bottom: 1px solid #dee2e6;
+		}
+
+		.navbar-brand {
+			font-weight: 700;
+			font-size: 1.3rem;
+		}
+
+		.book-card {
+			background: #fff;
+			border: 1px solid #dee2e6;
+			border-radius: 8px;
+			padding: 1.2rem;
+			height: 100%;
+		}
+
+		.book-card h6 {
+			font-weight: 600;
+			margin-bottom: 0.2rem;
+		}
+
+		.book-card .author {
+			color: #6c757d;
+			font-size: 0.85rem;
+		}
+
+		footer {
+			background: #212529;
+			color: #adb5bd;
+			text-align: center;
+			padding: 1.5rem;
+			font-size: 0.85rem;
+			margin-top: 3rem;
+		}
+	</style>
+</head>
+
+<body>
+
+	<nav class="navbar navbar-expand-lg sticky-top">
+		<div class="container">
+			<a class="navbar-brand" href="index.html">LibraryMS</a>
+			<div class="ms-auto d-flex gap-2 align-items-center">
+				<a href="catalogue.html" class="btn btn-primary btn-sm">Catalogue</a>
+				<a href="#" class="btn btn-outline-secondary btn-sm">My Books</a>
+				<a href="book-management.html" id="bookMgmtBtn" class="btn btn-outline-secondary btn-sm d-none">Book
+					Management</a>
+				<a href="create-account.html" id="manageUsersBtn" class="btn btn-outline-secondary btn-sm d-none">Manage
+					Users</a>
+				<a href="/login.html" id="loginBtn" class="btn btn-outline-secondary btn-sm">Login</a>
+				<span id="navUsername" class="text-muted small d-none"></span>
+				<a href="#" onclick="logout()" id="logoutBtn" class="btn btn-outline-danger btn-sm d-none">Logout</a>
+			</div>
+		</div>
+	</nav>
+
+	<div class="container py-5">
+		<h2 class="fw-bold mb-1">Book Catalogue</h2>
+		<p class="text-muted mb-4">Browse all available books in the library.</p>
+
+		<!-- Search & Filter -->
+		<div class="row g-2 mb-4">
+			<div class="col-md-6">
+				<input type="text" id="searchInput" class="form-control" placeholder="Search by title or author..."
+					oninput="filterBooks()" />
+			</div>
+			<div class="col-md-3">
+				<select id="genreFilter" class="form-select" onchange="filterBooks()">
+					<option value="">All Genres</option>
+					<option>Fiction</option>
+					<option>Non-Fiction</option>
+					<option>Science Fiction</option>
+					<option>Fantasy</option>
+					<option>Mystery</option>
+					<option>History</option>
+					<option>Biography</option>
+					<option>Romance</option>
+					<option>Horror</option>
+					<option>Other</option>
+				</select>
+			</div>
+			<div class="col-md-3">
+				<select id="availFilter" class="form-select" onchange="filterBooks()">
+					<option value="">All Status</option>
+					<option value="true">Available</option>
+					<option value="false">Borrowed</option>
+				</select>
+			</div>
+		</div>
+
+		<div id="noResults" class="alert alert-info d-none">No books found.</div>
+
+		<div class="row g-3" id="booksGrid">
+			<div class="col-12 text-center text-muted py-5">Loading books...</div>
+		</div>
+	</div>
+
+	<footer>LibraryMS - MASE 2026</footer>
+
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+	<script>
+		function getToken() {
+			return localStorage.getItem('jwt_token') || '';
+		}
+
+		function authHeaders() {
+			return {
+				'Content-Type': 'application/json',
+				'Authorization': 'Bearer ' + getToken()
+			};
+		}
+
+		function logout() {
+			localStorage.removeItem('jwt_token');
+			localStorage.removeItem('user_name');
+			localStorage.removeItem('user_role');
+			window.location.href = '/login.html';
+		}
+
+		let allBooks = [];
+
+		document.addEventListener('DOMContentLoaded', () => {
+			loadCurrentUser();
+			loadBooks();
+		});
+
+		function loadCurrentUser() {
+			const userName = localStorage.getItem('user_name');
+			const userRole = localStorage.getItem('user_role');
+
+			if (userName) {
+				document.getElementById('loginBtn').classList.add('d-none');
+				document.getElementById('navUsername').textContent = userName;
+				document.getElementById('navUsername').classList.remove('d-none');
+				document.getElementById('logoutBtn').classList.remove('d-none');
+				if (userRole === 'LIBRARIAN') {
+					document.getElementById('bookMgmtBtn').classList.remove('d-none');
+					document.getElementById('manageUsersBtn').classList.remove('d-none');
+				}
+			}
+		}
+
+		async function loadBooks() {
+			try {
+				const res = await fetch('/api/books', {
+					headers: authHeaders()
+				});
+				allBooks = await res.json();
+			} catch (e) {
+				// dev mock data
+				allBooks = [
+					{id: 1, title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', genre: 'Fiction', isbn: '978-0-7432-7356-5', available: true},
+					{id: 2, title: '1984', author: 'George Orwell', genre: 'Science Fiction', isbn: '978-0-452-28423-4', available: false},
+					{id: 3, title: 'To Kill a Mockingbird', author: 'Harper Lee', genre: 'Fiction', isbn: '978-0-06-112008-4', available: true},
+					{id: 4, title: 'Dune', author: 'Frank Herbert', genre: 'Science Fiction', isbn: '978-0-441-01369-7', available: true},
+				];
+			}
+			renderBooks(allBooks);
+		}
+
+		function filterBooks() {
+			const search = document.getElementById('searchInput').value.toLowerCase();
+			const genre = document.getElementById('genreFilter').value;
+			const avail = document.getElementById('availFilter').value;
+
+			const filtered = allBooks.filter(b => {
+				const matchSearch = !search || b.title.toLowerCase().includes(search) || b.author.toLowerCase().includes(search);
+				const matchGenre = !genre || b.genre === genre;
+				const matchAvail = avail === '' || String(b.available) === avail;
+				return matchSearch && matchGenre && matchAvail;
+			});
+
+			renderBooks(filtered);
+		}
+
+		function renderBooks(books) {
+			const grid = document.getElementById('booksGrid');
+			const noResults = document.getElementById('noResults');
+
+			if (books.length === 0) {
+				grid.innerHTML = '';
+				noResults.classList.remove('d-none');
+				return;
+			}
+			noResults.classList.add('d-none');
+			grid.innerHTML = books.map(b => `
+		        <div class="col-md-3 col-sm-6">
+		            <div class="book-card">
+		                <div class="d-flex justify-content-between align-items-start mb-2">
+		                    <span class="badge bg-secondary">${esc(b.genre)}</span>
+		                    <span class="badge ${b.available ? 'bg-success' : 'bg-danger'}">${b.available ? 'Available' : 'Borrowed'}</span>
+		                </div>
+		                <h6>${esc(b.title)}</h6>
+		                <p class="author mb-2">${esc(b.author)}</p>
+		                <p class="text-muted" style="font-size:0.75rem">ISBN: ${esc(b.isbn)}</p>
+		                <button class="btn btn-sm w-100 mt-1 ${b.available ? 'btn-primary' : 'btn-secondary'}"
+		                    ${b.available ? `onclick="borrowBook(${b.id})"` : 'disabled'}>
+		                    ${b.available ? 'Borrow' : 'Unavailable'}
+		                </button>
+		            </div>
+		        </div>
+		    `).join('');
+		}
+
+		function borrowBook(id) {
+			alert('Borrowing will be implemented in User Story 4!');
+		}
+
+		function esc(str) {
+			return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+		}
+	</script>
+</body>
+
+</html>
