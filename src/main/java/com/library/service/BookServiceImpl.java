@@ -31,6 +31,19 @@ public class BookServiceImpl implements BookService {
 		Book saved = bookRepository.save(book);
 		return toResponse(saved);
 	}
+	
+	@Override
+	public List<BookResponse> searchBooks(String title, String genre) {
+	    if (title != null && !title.isEmpty()) {
+	        return bookRepository.findByTitleContainingIgnoreCase(title)
+	                .stream().map(this::toResponse).collect(Collectors.toList());
+	    }
+	    if (genre != null && !genre.isEmpty()) {
+	        return bookRepository.findByGenre(genre)
+	                .stream().map(this::toResponse).collect(Collectors.toList());
+	    }
+	    return getAllBooks();
+	}
 
 	@Override
 	public BookResponse updateBook(Long id, BookRequest request) {

@@ -6,6 +6,8 @@ import java.util.List;
 
 public interface BookService {
 	BookResponse addBook(BookRequest request);
+	
+	List<BookResponse> searchBooks(String title, String genre);
 
 	BookResponse updateBook(Long id, BookRequest request);
 

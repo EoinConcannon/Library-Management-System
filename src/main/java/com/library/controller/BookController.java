@@ -49,4 +49,11 @@ public class BookController {
 		bookService.deleteBook(id);
 		return ResponseEntity.noContent().build();
 	}
+	
+	@GetMapping("/search")
+	public ResponseEntity<List<BookResponse>> searchBooks(
+	        @RequestParam(required = false) String title,
+	        @RequestParam(required = false) String genre) {
+	    return ResponseEntity.ok(bookService.searchBooks(title, genre));
+	}
 }
