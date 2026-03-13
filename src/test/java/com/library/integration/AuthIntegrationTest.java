@@ -2,10 +2,12 @@ package com.library.integration;
 
 import com.library.BaseIntegrationTest;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import static io.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.*;
 
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "spring.profiles.active=test")
 public class AuthIntegrationTest extends BaseIntegrationTest {
 
 	@Test

@@ -2,15 +2,30 @@ package com.library.integration;
 
 import com.library.BaseIntegrationTest;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.test.annotation.DirtiesContext;
 
 import static io.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "spring.profiles.active=test")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_CLASS)
 public class BookIntegrationTest extends BaseIntegrationTest {
 
+	@LocalServerPort
+	private int port;
+
 	@Test
-	void getAllBooks_ReturnsOk() {
-		given().when().get("/api/books").then().statusCode(200).body("$", instanceOf(java.util.List.class));
+	void getAllBooks_ReturnsOk() throws Exception {
+		var client = java.net.http.HttpClient.newHttpClient();
+		var request = java.net.http.HttpRequest.newBuilder()
+				.uri(java.net.URI.create("http://localhost:" + port + "/api/books")).GET().build();
+		var response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+		assertThat(response.statusCode()).isEqualTo(200);
+		assertThat(response.body()).startsWith("[");
 	}
 
 	@Test

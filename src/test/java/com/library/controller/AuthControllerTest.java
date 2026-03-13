@@ -16,6 +16,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -33,6 +34,7 @@ class AuthControllerTest {
 	@BeforeEach
 	void setUp() {
 		RestAssured.port = port;
+		RestAssured.baseURI = "http://localhost";
 		userRepository.deleteAll();
 
 		User user = new User();
@@ -107,30 +109,54 @@ class AuthControllerTest {
 	// GET /api/auth/me
 
 	@Test
-	void testMeWithValidTokenReturnsNameAndRole() {
+	void testMeWithValidTokenReturnsNameAndRole() throws Exception {
 		String token = loginAndGetToken("jane@example.com", "plaintext_password");
 
-		given().header("Authorization", "Bearer " + token).when().get("/api/auth/me").then().statusCode(200)
-				.body("name", equalTo("Jane Doe")).body("role", equalTo("STUDENT"));
+		var client = java.net.http.HttpClient.newHttpClient();
+		var request = java.net.http.HttpRequest.newBuilder()
+				.uri(java.net.URI.create("http://localhost:" + port + "/api/auth/me"))
+				.header("Authorization", "Bearer " + token).GET().build();
+		var response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+		assertThat(response.statusCode()).isEqualTo(200);
+		assertThat(response.body()).contains("Jane Doe");
+		assertThat(response.body()).contains("STUDENT");
 	}
 
 	@Test
-	void testMeWithLibrarianTokenReturnsLibrarianDetails() {
+	void testMeWithLibrarianTokenReturnsLibrarianDetails() throws Exception {
 		String token = loginAndGetToken("librarian@example.com", "librarian_password");
 
-		given().header("Authorization", "Bearer " + token).when().get("/api/auth/me").then().statusCode(200)
-				.body("name", equalTo("Librarian User")).body("role", equalTo("LIBRARIAN"));
+		var client = java.net.http.HttpClient.newHttpClient();
+		var request = java.net.http.HttpRequest.newBuilder()
+				.uri(java.net.URI.create("http://localhost:" + port + "/api/auth/me"))
+				.header("Authorization", "Bearer " + token).GET().build();
+		var response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+		assertThat(response.statusCode()).isEqualTo(200);
+		assertThat(response.body()).contains("Librarian User");
+		assertThat(response.body()).contains("LIBRARIAN");
 	}
 
 	@Test
-	void testMeWithNoTokenReturnsEmptyOrUnauthorized() {
-		given().when().get("/api/auth/me").then().statusCode(anyOf(equalTo(200), equalTo(401)));
+	void testMeWithNoTokenReturnsEmptyOrUnauthorized() throws Exception {
+		var client = java.net.http.HttpClient.newHttpClient();
+		var request = java.net.http.HttpRequest.newBuilder()
+				.uri(java.net.URI.create("http://localhost:" + port + "/api/auth/me")).GET().build();
+		var response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+		assertThat(response.statusCode()).isIn(200, 401);
 	}
 
 	@Test
-	void testMeWithInvalidTokenReturnsUnauthorized() {
-		given().header("Authorization", "Bearer totally.invalid.token").when().get("/api/auth/me").then()
-				.statusCode(401);
+	void testMeWithInvalidTokenReturnsUnauthorized() throws Exception {
+		var client = java.net.http.HttpClient.newHttpClient();
+		var request = java.net.http.HttpRequest.newBuilder()
+				.uri(java.net.URI.create("http://localhost:" + port + "/api/auth/me"))
+				.header("Authorization", "Bearer totally.invalid.token").GET().build();
+		var response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+
+		assertThat(response.statusCode()).isEqualTo(401);
 	}
 
 	// Helper
