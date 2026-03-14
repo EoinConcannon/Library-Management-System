@@ -54,13 +54,37 @@ public class BorrowingServiceImpl implements BorrowingService {
 		return borrowedBookRepository.findByUserAndReturnedDateIsNull(user).stream().map(this::toResponse)
 				.collect(Collectors.toList());
 	}
-	
+
 	@Override
 	public List<BorrowedBookResponse> getBorrowingHistory(String userEmail) {
-	    User user = userRepository.findByEmail(userEmail)
-	        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-	    return borrowedBookRepository.findByUser(user)
-	        .stream().map(this::toResponse).collect(Collectors.toList());
+		User user = userRepository.findByEmail(userEmail)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+		return borrowedBookRepository.findByUser(user).stream().map(this::toResponse).collect(Collectors.toList());
+	}
+
+	@Override
+	public BorrowedBookResponse returnBook(Long borrowingId, String userEmail) {
+		BorrowedBook borrowedBook = borrowedBookRepository.findById(borrowingId)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Borrowing record not found"));
+
+		// Scenario 2 - ensure the borrowing belongs to the requesting user
+		if (!borrowedBook.getUser().getEmail().equals(userEmail)) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot return books you have not borrowed");
+		}
+
+		// Already returned
+		if (borrowedBook.getReturnedDate() != null) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "This book has already been returned");
+		}
+
+		borrowedBook.setReturnedDate(LocalDate.now());
+		borrowedBookRepository.save(borrowedBook);
+
+		Book book = borrowedBook.getBook();
+		book.setAvailable(true);
+		bookRepository.save(book);
+
+		return toResponse(borrowedBook);
 	}
 
 	private BorrowedBookResponse toResponse(BorrowedBook b) {
