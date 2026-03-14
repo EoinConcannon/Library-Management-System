@@ -121,7 +121,7 @@
 						<h5 class="fw-semibold mb-0">All Books</h5>
 						<span class="text-muted small" id="bookCountLabel">0 books</span>
 					</div>
-					<table class="table table-bordered table-hover mb-0">
+					<table id="booksTable" class="table table-bordered table-hover mb-0">
 						<thead class="table-light">
 							<tr>
 								<th>Title</th>
@@ -165,19 +165,22 @@
 
 	<footer>LibraryMS - MASE 2026</footer>
 
+	<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+	<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+	<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 	<script>
 		function getToken() {
-		  return localStorage.getItem('jwt_token') || '';
+			return localStorage.getItem('jwt_token') || '';
 		}
 
 		function authHeaders() {
-		  return {
-		    'Content-Type': 'application/json',
-		    'Authorization': 'Bearer ' + getToken()
-		  };
+			return {
+				'Content-Type': 'application/json',
+				'Authorization': 'Bearer ' + getToken()
+			};
 		}
-	
+
 		let books = [];
 		let deleteModal;
 		let pendingDeleteId = null;
@@ -190,29 +193,29 @@
 		});
 
 		function loadCurrentUser() {
-		    const userName = localStorage.getItem('user_name');
-		    const userRole = localStorage.getItem('user_role');
+			const userName = localStorage.getItem('user_name');
+			const userRole = localStorage.getItem('user_role');
 
-		    if (!userName) {
-		        window.location.href = '/login.html';
-		        return;
-		    }
+			if (!userName) {
+				window.location.href = '/login.html';
+				return;
+			}
 
-		    document.getElementById('navUsername').textContent = userName;
-		    document.getElementById('navUsername').classList.remove('d-none');
+			document.getElementById('navUsername').textContent = userName;
+			document.getElementById('navUsername').classList.remove('d-none');
 		}
 
 		async function loadBooks() {
-		    try {
-		        const res = await fetch('/api/books', {
-		            headers: authHeaders()
-		        });
-		        books = await res.json();
-		        renderTable();
-		    } catch (e) {
-		        books = [];
-		        renderTable();
-		    }
+			try {
+				const res = await fetch('/api/books', {
+					headers: authHeaders()
+				});
+				books = await res.json();
+				renderTable();
+			} catch (e) {
+				books = [];
+				renderTable();
+			}
 		}
 
 		function validateForm() {
@@ -246,9 +249,9 @@
 
 			try {
 				const res = await fetch(url, {
-				    method,
-				    headers: authHeaders(), 
-				    body: JSON.stringify(payload)
+					method,
+					headers: authHeaders(),
+					body: JSON.stringify(payload)
 				});
 				const data = await res.json();
 
@@ -312,43 +315,55 @@
 		}
 
 		async function confirmDelete() {
-		    deleteModal.hide();
-		    try {
-		        await fetch(`/api/books/${pendingDeleteId}`, {
-		            method: 'DELETE',
-		            headers: authHeaders() 
-		        });
-		    } catch (e) {}
-		    books = books.filter(b => b.id !== pendingDeleteId);
-		    renderTable();
-		    showSuccess('Book deleted.');
-		    pendingDeleteId = null;
+			deleteModal.hide();
+			try {
+				await fetch(`/api/books/${pendingDeleteId}`, {
+					method: 'DELETE',
+					headers: authHeaders()
+				});
+			} catch (e) { }
+			books = books.filter(b => b.id !== pendingDeleteId);
+			renderTable();
+			showSuccess('Book deleted.');
+			pendingDeleteId = null;
 		}
 
 		function renderTable() {
+			if ($.fn.DataTable.isDataTable('#booksTable')) {
+				$('#booksTable').DataTable().destroy();
+			}
+
 			const tbody = document.getElementById('booksTableBody');
 			document.getElementById('bookCountLabel').textContent = books.length + ' book' + (books.length !== 1 ? 's' : '');
+
 			if (books.length === 0) {
 				tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3 small">No books yet.</td></tr>`;
 				return;
 			}
+
 			tbody.innerHTML = books.map(b => `
-      <tr>
-        <td>${esc(b.title)}</td>
-        <td>${esc(b.author)}</td>
-        <td>${esc(b.genre)}</td>
-        <td class="text-muted small">${esc(b.isbn)}</td>
-        <td><span class="badge ${b.available ? 'bg-success' : 'bg-danger'}">${b.available ? 'Available' : 'Borrowed'}</span></td>
-        <td>
-          <button class="btn btn-outline-primary btn-sm me-1" onclick="editBook(${b.id})">
-            <i class="bi bi-pencil"></i>
-          </button>
-          <button class="btn btn-outline-danger btn-sm" onclick="promptDelete(${b.id}, '${esc(b.title)}')">
-            <i class="bi bi-trash"></i>
-          </button>
-        </td>
-      </tr>
-    `).join('');
+		        <tr>
+		            <td>${esc(b.title)}</td>
+		            <td>${esc(b.author)}</td>
+		            <td>${esc(b.genre)}</td>
+		            <td class="text-muted small">${esc(b.isbn)}</td>
+		            <td><span class="badge ${b.available ? 'bg-success' : 'bg-danger'}">${b.available ? 'Available' : 'Borrowed'}</span></td>
+		            <td>
+		                <button class="btn btn-outline-primary btn-sm me-1" onclick="editBook(${b.id})">
+		                    <i class="bi bi-pencil"></i>
+		                </button>
+		                <button class="btn btn-outline-danger btn-sm" onclick="promptDelete(${b.id}, '${esc(b.title)}')">
+		                    <i class="bi bi-trash"></i>
+		                </button>
+		            </td>
+		        </tr>
+		    `).join('');
+
+			$('#booksTable').DataTable({
+				pageLength: 10,
+				language: {search: 'Filter books:'},
+				columnDefs: [{orderable: false, targets: 5}] // disable sort on Actions column
+			});
 		}
 
 		function showError(msg) {
@@ -383,12 +398,12 @@
 		function esc(str) {
 			return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 		}
-		
+
 		function logout() {
-		    localStorage.removeItem('jwt_token');
-		    localStorage.removeItem('user_name');
-		    localStorage.removeItem('user_role');
-		    window.location.href = '/login.html';
+			localStorage.removeItem('jwt_token');
+			localStorage.removeItem('user_name');
+			localStorage.removeItem('user_role');
+			window.location.href = '/login.html';
 		}
 	</script>
 </body>
