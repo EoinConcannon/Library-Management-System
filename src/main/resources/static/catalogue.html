@@ -149,7 +149,7 @@
 			const userRole = localStorage.getItem('user_role');
 			if (userName) {
 				document.getElementById('loginBtn').classList.add('d-none');
-				document.getElementById('navUsername').textContent = '👤 ' + userName;
+				document.getElementById('navUsername').textContent = userName;
 				document.getElementById('navUsername').classList.remove('d-none');
 				document.getElementById('logoutBtn').classList.remove('d-none');
 				if (userRole === 'LIBRARIAN') {
@@ -222,7 +222,7 @@
 		                <p class="text-muted" style="font-size:0.75rem">ISBN: ${esc(b.isbn)}</p>
 		                <button class="btn btn-sm w-100 mt-1 ${b.available ? 'btn-primary' : 'btn-secondary'}"
 		                    ${b.available ? `onclick="borrowBook(${b.id})"` : 'disabled'}>
-		                    ${b.available ? '<i class="bi bi-book me-1"></i>Borrow' : 'Unavailable'}
+		                   	${b.available ? 'Borrow' : 'Unavailable'}
 		                </button>
 		            </div>
 		        </div>

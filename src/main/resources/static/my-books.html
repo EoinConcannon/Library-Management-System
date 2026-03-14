@@ -187,25 +187,78 @@
 
 			empty.classList.add('d-none');
 			grid.innerHTML = borrowings.map(b => `
-            <div class="col-md-4 col-sm-6">
-                <div class="card p-3 h-100">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <span class="badge bg-secondary">${esc(b.genre)}</span>
-                        <span class="badge bg-warning text-dark">
-                            <i class="bi bi-book me-1"></i>Borrowed
-                        </span>
-                    </div>
-                    <h6 class="fw-semibold mb-1">${esc(b.title)}</h6>
-                    <p class="text-muted small mb-2">${esc(b.author)}</p>
-                    <p class="text-muted" style="font-size:0.75rem">ISBN: ${esc(b.isbn)}</p>
-                    <hr class="my-2"/>
-                    <div class="text-muted small">
-                        <i class="bi bi-calendar3 me-1"></i>
-                        Borrowed on: <strong>${formatDate(b.borrowedDate)}</strong>
-                    </div>
-                </div>
-            </div>
-        `).join('');
+		        <div class="col-md-4 col-sm-6" id="borrowing-${b.id}">
+		            <div class="card p-3 h-100">
+		                <div class="d-flex justify-content-between align-items-start mb-2">
+		                    <span class="badge bg-secondary">${esc(b.genre)}</span>
+		                    <span class="badge bg-warning text-dark">
+		                        <i class="bi bi-book me-1"></i>Borrowed
+		                    </span>
+		                </div>
+		                <h6 class="fw-semibold mb-1">${esc(b.title)}</h6>
+		                <p class="text-muted small mb-2">${esc(b.author)}</p>
+		                <p class="text-muted" style="font-size:0.75rem">ISBN: ${esc(b.isbn)}</p>
+		                <hr class="my-2"/>
+		                <div class="text-muted small mb-3">
+		                    <i class="bi bi-calendar3 me-1"></i>
+		                    Borrowed on: <strong>${formatDate(b.borrowedDate)}</strong>
+		                </div>
+		                <button class="btn btn-outline-danger btn-sm w-100 mt-auto"
+		                    onclick="returnBook(${b.id}, '${esc(b.title)}')">
+		                    <i class="bi bi-arrow-return-left me-1"></i>Return Book
+		                </button>
+		            </div>
+		        </div>
+		    `).join('');
+		}
+
+		async function returnBook(borrowingId, title) {
+			if (!confirm(`Return "${title}"?`)) return;
+
+			try {
+				const res = await fetch(`/api/borrowings/${borrowingId}/return`, {
+					method: 'PATCH',
+					headers: authHeaders()
+				});
+
+				if (res.ok) {
+					// Remove the card from the grid immediately
+					const card = document.getElementById(`borrowing-${borrowingId}`);
+					if (card) card.remove();
+
+					// Update the count badge
+					const countEl = document.getElementById('currentCount');
+					const newCount = parseInt(countEl.textContent) - 1;
+					countEl.textContent = newCount;
+
+					// Show empty state if no books left
+					if (newCount === 0) {
+						document.getElementById('currentEmpty').classList.remove('d-none');
+					}
+
+					showToast('Book returned successfully. Thank you!', 'success');
+				} else if (res.status === 403) {
+					showToast('Cannot return books you have not borrowed.', 'danger');
+				} else {
+					showToast('Something went wrong. Please try again.', 'danger');
+				}
+			} catch (e) {
+				showToast('Could not connect to server.', 'danger');
+			}
+		}
+
+		function showToast(message, type) {
+			const container = document.getElementById('toastContainer');
+			const id = 'toast-' + Date.now();
+			container.innerHTML += `
+		        <div id="${id}" class="toast align-items-center text-bg-${type} border-0" role="alert">
+		            <div class="d-flex">
+		                <div class="toast-body fw-semibold">${message}</div>
+		                <button type="button" class="btn-close btn-close-white me-2 m-auto"
+		                    data-bs-dismiss="toast"></button>
+		            </div>
+		        </div>`;
+			new bootstrap.Toast(document.getElementById(id), {delay: 3500}).show();
 		}
 
 		function renderHistory(history) {
@@ -271,6 +324,7 @@
 			return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 		}
 	</script>
+	<div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
 </body>
 
 </html>

@@ -33,4 +33,11 @@ public class BorrowingController {
 		String email = authentication.getName();
 		return ResponseEntity.ok(borrowingService.getBorrowingHistory(email));
 	}
+
+	@PatchMapping("/{borrowingId}/return")
+	public ResponseEntity<BorrowedBookResponse> returnBook(@PathVariable Long borrowingId,
+			Authentication authentication) {
+		String email = authentication.getName();
+		return ResponseEntity.ok(borrowingService.returnBook(borrowingId, email));
+	}
 }
