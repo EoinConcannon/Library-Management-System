@@ -34,6 +34,8 @@ public class SecurityConfig {
 						// Public API endpoints
 						.requestMatchers("/api/auth/login", "/api/auth/me").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/books", "/api/books/**").permitAll()
+						.requestMatchers(HttpMethod.POST, "/api/borrowings/**").authenticated()
+						.requestMatchers(HttpMethod.GET, "/api/borrowings/my").authenticated()
 						// Protected API endpoints only
 						.requestMatchers("/api/users/**").hasRole("LIBRARIAN")
 						.requestMatchers(HttpMethod.POST, "/api/books/**").hasRole("LIBRARIAN")
