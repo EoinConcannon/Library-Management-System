@@ -29,11 +29,13 @@ public class SecurityConfig {
 				.authorizeHttpRequests(auth -> auth
 						// All static pages are public — JS handles role redirects
 						.requestMatchers("/", "/index.html", "/catalogue.html", "/login.html", "/create-account.html",
-								"/book-management.html", "/css/**", "/js/**")
+								"/book-management.html", "/my-books.html", "/css/**", "/js/**")
 						.permitAll()
 						// Public API endpoints
 						.requestMatchers("/api/auth/login", "/api/auth/me").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/books", "/api/books/**").permitAll()
+						.requestMatchers(HttpMethod.POST, "/api/borrowings/**").authenticated()
+						.requestMatchers(HttpMethod.GET, "/api/borrowings/my").authenticated()
 						// Protected API endpoints only
 						.requestMatchers("/api/users/**").hasRole("LIBRARIAN")
 						.requestMatchers(HttpMethod.POST, "/api/books/**").hasRole("LIBRARIAN")

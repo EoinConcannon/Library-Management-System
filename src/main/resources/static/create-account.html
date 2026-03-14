@@ -7,6 +7,7 @@
 	<title>LibraryMS — Manage Users</title>
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+	<link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet" />
 	<style>
 		body {
 			background: #f8f9fa;
@@ -44,9 +45,9 @@
 		<div class="container">
 			<a class="navbar-brand" href="index.html">LibraryMS</a>
 			<div class="ms-auto d-flex gap-2 align-items-center">
-			    <a href="index.html" class="btn btn-outline-secondary btn-sm">Back to Home</a>
-			    <span id="navUsername" class="text-muted small d-none"></span>
-			    <a href="#" onclick="logout()" class="btn btn-outline-danger btn-sm">Logout</a>
+				<a href="index.html" class="btn btn-outline-secondary btn-sm">Back to Home</a>
+				<span id="navUsername" class="text-muted small d-none"></span>
+				<a href="#" onclick="logout()" class="btn btn-outline-danger btn-sm">Logout</a>
 			</div>
 		</div>
 	</nav>
@@ -113,7 +114,7 @@
 						<h5 class="fw-semibold mb-0">Existing Users</h5>
 						<span class="text-muted small" id="userCountLabel">0 users</span>
 					</div>
-					<table class="table table-bordered table-hover mb-0">
+					<table id="usersTable" class="table table-bordered table-hover mb-0">
 						<thead class="table-light">
 							<tr>
 								<th>Name</th>
@@ -136,6 +137,9 @@
 
 	<footer>LibraryMS - MASE 2026</footer>
 
+	<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+	<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+	<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 	<script>
 		function getToken() {
@@ -274,12 +278,19 @@
 		}
 
 		function renderTable() {
+			// Destroy existing DataTable if present
+			if ($.fn.DataTable.isDataTable('#usersTable')) {
+				$('#usersTable').DataTable().destroy();
+			}
+
 			const tbody = document.getElementById('usersTableBody');
 			document.getElementById('userCountLabel').textContent = users.length + ' user' + (users.length !== 1 ? 's' : '');
+
 			if (users.length === 0) {
 				tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3 small">No users yet.</td></tr>`;
 				return;
 			}
+
 			tbody.innerHTML = users.map(u => `
 		        <tr>
 		            <td>${esc(u.name)}</td>
@@ -292,6 +303,12 @@
 		            </td>
 		        </tr>
 		    `).join('');
+
+			// Initialise DataTable
+			$('#usersTable').DataTable({
+				pageLength: 10,
+				language: {search: 'Filter users:'}
+			});
 		}
 
 		function showError(msg) {

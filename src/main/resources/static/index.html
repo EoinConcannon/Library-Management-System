@@ -85,7 +85,7 @@
 			<a class="navbar-brand" href="index.html">LibraryMS</a>
 			<div class="ms-auto d-flex gap-2 align-items-center">
 				<a href="catalogue.html" class="btn btn-outline-secondary btn-sm">Catalogue</a>
-				<a href="#" class="btn btn-outline-secondary btn-sm">My Books</a>
+				<a href="my-books.html" class="btn btn-outline-secondary btn-sm">My Books</a>
 				<a href="book-management.html" id="bookMgmtBtn" class="btn btn-outline-secondary btn-sm d-none">Book
 					Management</a>
 				<a href="create-account.html" id="manageUsersBtn" class="btn btn-outline-secondary btn-sm d-none">Manage
@@ -178,7 +178,7 @@
 
 			if (userName) {
 				document.getElementById('loginBtn').classList.add('d-none');
-				document.getElementById('navUsername').textContent = '👤 ' + userName;
+				document.getElementById('navUsername').textContent = userName;
 				document.getElementById('navUsername').classList.remove('d-none');
 				document.getElementById('logoutBtn').classList.remove('d-none');
 
