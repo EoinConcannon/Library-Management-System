@@ -27,4 +27,10 @@ public class BorrowingController {
 		String email = authentication.getName();
 		return ResponseEntity.ok(borrowingService.getActiveBorrowings(email));
 	}
+
+	@GetMapping("/my/history")
+	public ResponseEntity<List<BorrowedBookResponse>> getMyHistory(Authentication authentication) {
+		String email = authentication.getName();
+		return ResponseEntity.ok(borrowingService.getBorrowingHistory(email));
+	}
 }

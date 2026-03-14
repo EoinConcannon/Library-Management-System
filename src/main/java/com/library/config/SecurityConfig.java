@@ -29,7 +29,7 @@ public class SecurityConfig {
 				.authorizeHttpRequests(auth -> auth
 						// All static pages are public — JS handles role redirects
 						.requestMatchers("/", "/index.html", "/catalogue.html", "/login.html", "/create-account.html",
-								"/book-management.html", "/css/**", "/js/**")
+								"/book-management.html", "/my-books.html", "/css/**", "/js/**")
 						.permitAll()
 						// Public API endpoints
 						.requestMatchers("/api/auth/login", "/api/auth/me").permitAll()

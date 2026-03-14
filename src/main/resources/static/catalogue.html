@@ -60,7 +60,7 @@
 			<a class="navbar-brand" href="index.html">LibraryMS</a>
 			<div class="ms-auto d-flex gap-2 align-items-center">
 				<a href="catalogue.html" class="btn btn-primary btn-sm">Catalogue</a>
-				<a href="#" class="btn btn-outline-secondary btn-sm">My Books</a>
+				<a href="my-books.html" class="btn btn-outline-secondary btn-sm">My Books</a>
 				<a href="book-management.html" id="bookMgmtBtn" class="btn btn-outline-secondary btn-sm d-none">Book
 					Management</a>
 				<a href="create-account.html" id="manageUsersBtn" class="btn btn-outline-secondary btn-sm d-none">Manage
@@ -107,6 +107,12 @@
 		</div>
 
 		<div id="noResults" class="alert alert-info d-none">No books found.</div>
+		<div class="row g-3" id="booksGrid"></div>
+
+		<!-- Pagination -->
+		<nav class="mt-4" id="paginationNav">
+			<ul class="pagination justify-content-center" id="paginationControls"></ul>
+		</nav>
 
 		<div class="row g-3" id="booksGrid">
 			<div class="col-12 text-center text-muted py-5">Loading books...</div>
@@ -117,17 +123,10 @@
 
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 	<script>
-		function getToken() {
-			return localStorage.getItem('jwt_token') || '';
-		}
-
+		function getToken() {return localStorage.getItem('jwt_token') || '';}
 		function authHeaders() {
-			return {
-				'Content-Type': 'application/json',
-				'Authorization': 'Bearer ' + getToken()
-			};
+			return {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken()};
 		}
-
 		function logout() {
 			localStorage.removeItem('jwt_token');
 			localStorage.removeItem('user_name');
@@ -135,7 +134,10 @@
 			window.location.href = '/login.html';
 		}
 
+		const PAGE_SIZE = 12;
 		let allBooks = [];
+		let filteredBooks = [];
+		let currentPage = 1;
 
 		document.addEventListener('DOMContentLoaded', () => {
 			loadCurrentUser();
@@ -145,10 +147,9 @@
 		function loadCurrentUser() {
 			const userName = localStorage.getItem('user_name');
 			const userRole = localStorage.getItem('user_role');
-
 			if (userName) {
 				document.getElementById('loginBtn').classList.add('d-none');
-				document.getElementById('navUsername').textContent = userName;
+				document.getElementById('navUsername').textContent = '👤 ' + userName;
 				document.getElementById('navUsername').classList.remove('d-none');
 				document.getElementById('logoutBtn').classList.remove('d-none');
 				if (userRole === 'LIBRARIAN') {
@@ -160,12 +161,9 @@
 
 		async function loadBooks() {
 			try {
-				const res = await fetch('/api/books', {
-					headers: authHeaders()
-				});
+				const res = await fetch('/api/books', {headers: authHeaders()});
 				allBooks = await res.json();
 			} catch (e) {
-				// dev mock data
 				allBooks = [
 					{id: 1, title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', genre: 'Fiction', isbn: '978-0-7432-7356-5', available: true},
 					{id: 2, title: '1984', author: 'George Orwell', genre: 'Science Fiction', isbn: '978-0-452-28423-4', available: false},
@@ -173,7 +171,9 @@
 					{id: 4, title: 'Dune', author: 'Frank Herbert', genre: 'Science Fiction', isbn: '978-0-441-01369-7', available: true},
 				];
 			}
-			renderBooks(allBooks);
+			filteredBooks = [...allBooks];
+			currentPage = 1;
+			renderPage();
 		}
 
 		function filterBooks() {
@@ -181,27 +181,36 @@
 			const genre = document.getElementById('genreFilter').value;
 			const avail = document.getElementById('availFilter').value;
 
-			const filtered = allBooks.filter(b => {
+			filteredBooks = allBooks.filter(b => {
 				const matchSearch = !search || b.title.toLowerCase().includes(search) || b.author.toLowerCase().includes(search);
 				const matchGenre = !genre || b.genre === genre;
 				const matchAvail = avail === '' || String(b.available) === avail;
 				return matchSearch && matchGenre && matchAvail;
 			});
 
-			renderBooks(filtered);
+			currentPage = 1;
+			renderPage();
 		}
 
-		function renderBooks(books) {
+		function renderPage() {
 			const grid = document.getElementById('booksGrid');
 			const noResults = document.getElementById('noResults');
+			const paginationNav = document.getElementById('paginationNav');
 
-			if (books.length === 0) {
+			if (filteredBooks.length === 0) {
 				grid.innerHTML = '';
 				noResults.classList.remove('d-none');
+				paginationNav.classList.add('d-none');
 				return;
 			}
+
 			noResults.classList.add('d-none');
-			grid.innerHTML = books.map(b => `
+
+			const totalPages = Math.ceil(filteredBooks.length / PAGE_SIZE);
+			const start = (currentPage - 1) * PAGE_SIZE;
+			const pageBooks = filteredBooks.slice(start, start + PAGE_SIZE);
+
+			grid.innerHTML = pageBooks.map(b => `
 		        <div class="col-md-3 col-sm-6">
 		            <div class="book-card">
 		                <div class="d-flex justify-content-between align-items-start mb-2">
@@ -213,32 +222,77 @@
 		                <p class="text-muted" style="font-size:0.75rem">ISBN: ${esc(b.isbn)}</p>
 		                <button class="btn btn-sm w-100 mt-1 ${b.available ? 'btn-primary' : 'btn-secondary'}"
 		                    ${b.available ? `onclick="borrowBook(${b.id})"` : 'disabled'}>
-		                    ${b.available ? 'Borrow' : 'Unavailable'}
+		                    ${b.available ? '<i class="bi bi-book me-1"></i>Borrow' : 'Unavailable'}
 		                </button>
 		            </div>
 		        </div>
 		    `).join('');
+
+			renderPagination(totalPages);
+		}
+
+		function renderPagination(totalPages) {
+			const nav = document.getElementById('paginationNav');
+			const controls = document.getElementById('paginationControls');
+
+			if (totalPages <= 1) {
+				nav.classList.add('d-none');
+				return;
+			}
+
+			nav.classList.remove('d-none');
+
+			let html = `
+		        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+		            <a class="page-link" href="#" onclick="goToPage(${currentPage - 1})">
+		                <i class="bi bi-chevron-left"></i>
+		            </a>
+		        </li>`;
+
+			for (let i = 1; i <= totalPages; i++) {
+				// Show first, last, current and neighbours — ellipsis for others
+				if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+					html += `
+		                <li class="page-item ${i === currentPage ? 'active' : ''}">
+		                    <a class="page-link" href="#" onclick="goToPage(${i})">${i}</a>
+		                </li>`;
+				} else if (i === currentPage - 2 || i === currentPage + 2) {
+					html += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
+				}
+			}
+
+			html += `
+		        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+		            <a class="page-link" href="#" onclick="goToPage(${currentPage + 1})">
+		                <i class="bi bi-chevron-right"></i>
+		            </a>
+		        </li>`;
+
+			controls.innerHTML = html;
+		}
+
+		function goToPage(page) {
+			const totalPages = Math.ceil(filteredBooks.length / PAGE_SIZE);
+			if (page < 1 || page > totalPages) return;
+			currentPage = page;
+			renderPage();
+			window.scrollTo({top: 0, behavior: 'smooth'});
 		}
 
 		async function borrowBook(id) {
 			const userRole = localStorage.getItem('user_role');
-			if (!userRole) {
-				window.location.href = '/login.html';
-				return;
-			}
+			if (!userRole) {window.location.href = '/login.html'; return;}
 
 			try {
 				const res = await fetch(`/api/borrowings/${id}`, {
 					method: 'POST',
 					headers: authHeaders()
 				});
-
 				if (res.status === 201) {
-					// Update local book state so button disables immediately
 					const book = allBooks.find(b => b.id === id);
 					if (book) book.available = false;
 					filterBooks();
-					showToast('Book borrowed successfully!', 'success');
+					showToast('Book borrowed successfully! View it in My Books.', 'success');
 				} else if (res.status === 409) {
 					showToast('This book is no longer available.', 'danger');
 				} else {
@@ -255,12 +309,11 @@
 			container.innerHTML += `
 		        <div id="${id}" class="toast align-items-center text-bg-${type} border-0" role="alert">
 		            <div class="d-flex">
-		                <div class="toast-body">${message}</div>
+		                <div class="toast-body fw-semibold">${message}</div>
 		                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
 		            </div>
 		        </div>`;
-			const toastEl = document.getElementById(id);
-			new bootstrap.Toast(toastEl, {delay: 3000}).show();
+			new bootstrap.Toast(document.getElementById(id), {delay: 3500}).show();
 		}
 
 		function esc(str) {

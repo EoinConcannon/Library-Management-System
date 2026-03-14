@@ -54,6 +54,14 @@ public class BorrowingServiceImpl implements BorrowingService {
 		return borrowedBookRepository.findByUserAndReturnedDateIsNull(user).stream().map(this::toResponse)
 				.collect(Collectors.toList());
 	}
+	
+	@Override
+	public List<BorrowedBookResponse> getBorrowingHistory(String userEmail) {
+	    User user = userRepository.findByEmail(userEmail)
+	        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+	    return borrowedBookRepository.findByUser(user)
+	        .stream().map(this::toResponse).collect(Collectors.toList());
+	}
 
 	private BorrowedBookResponse toResponse(BorrowedBook b) {
 		BorrowedBookResponse dto = new BorrowedBookResponse();
