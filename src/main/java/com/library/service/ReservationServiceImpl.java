@@ -21,6 +21,7 @@ public class ReservationServiceImpl implements ReservationService {
 	private final NotificationRepository notificationRepository;
 	private final BookRepository bookRepository;
 	private final UserRepository userRepository;
+	private final BorrowedBookRepository borrowedBookRepository;
 
 	@Override
 	public ReservationResponse reserveBook(Long bookId, String userEmail) {
@@ -34,6 +35,12 @@ public class ReservationServiceImpl implements ReservationService {
 
 		User user = userRepository.findByEmail(userEmail)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+		// Check if this user is the one currently borrowing the book
+		borrowedBookRepository.findByUserAndBookIdAndReturnedDateIsNull(user, bookId).ifPresent(b -> {
+			throw new ResponseStatusException(HttpStatus.CONFLICT,
+					"You cannot reserve a book you are currently borrowing");
+		});
 
 		if (reservationRepository.existsByUserAndBookAndActiveTrue(user, book)) {
 			throw new ResponseStatusException(HttpStatus.CONFLICT,

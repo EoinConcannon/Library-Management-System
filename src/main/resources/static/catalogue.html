@@ -138,6 +138,7 @@
 		let allBooks = [];
 		let filteredBooks = [];
 		let currentPage = 1;
+		let borrowedBookIds = new Set();
 
 		document.addEventListener('DOMContentLoaded', () => {
 			loadCurrentUser();
@@ -171,6 +172,19 @@
 					{id: 4, title: 'Dune', author: 'Frank Herbert', genre: 'Science Fiction', isbn: '978-0-441-01369-7', available: true},
 				];
 			}
+
+			// Load user's current borrowings to disable borrow/reserve on books they already have
+			const token = getToken();
+			if (token) {
+				try {
+					const borrowRes = await fetch('/api/borrowings/my', {headers: authHeaders()});
+					const borrowings = await borrowRes.json();
+					borrowedBookIds = new Set(borrowings.map(b => b.bookId));
+				} catch (e) {
+					borrowedBookIds = new Set();
+				}
+			}
+
 			filteredBooks = [...allBooks];
 			currentPage = 1;
 			renderPage();
@@ -210,23 +224,31 @@
 			const start = (currentPage - 1) * PAGE_SIZE;
 			const pageBooks = filteredBooks.slice(start, start + PAGE_SIZE);
 
-			grid.innerHTML = pageBooks.map(b => `
-		        <div class="col-md-3 col-sm-6">
-		            <div class="book-card">
-		                <div class="d-flex justify-content-between align-items-start mb-2">
-		                    <span class="badge bg-secondary">${esc(b.genre)}</span>
-		                    <span class="badge ${b.available ? 'bg-success' : 'bg-danger'}">${b.available ? 'Available' : 'Borrowed'}</span>
-		                </div>
-		                <h6>${esc(b.title)}</h6>
-		                <p class="author mb-2">${esc(b.author)}</p>
-		                <p class="text-muted" style="font-size:0.75rem">ISBN: ${esc(b.isbn)}</p>
-						<button class="btn btn-sm w-100 mt-1 ${b.available ? 'btn-primary' : 'btn-warning'}"
-						    onclick="${b.available ? `borrowBook(${b.id})` : `reserveBook(${b.id})`}">
-						    ${b.available ? 'Borrow' : 'Reserve'}
-						</button>
-		            </div>
-		        </div>
-		    `).join('');
+			grid.innerHTML = pageBooks.map(b => {
+				let buttonHtml;
+				if (b.available) {
+					buttonHtml = `<button class="btn btn-sm w-100 mt-1 btn-primary" onclick="borrowBook(${b.id})">Borrow</button>`;
+				} else if (borrowedBookIds.has(b.id)) {
+					buttonHtml = `<button class="btn btn-sm w-100 mt-1 btn-secondary" disabled>You are borrowing this</button>`;
+				} else {
+					buttonHtml = `<button class="btn btn-sm w-100 mt-1 btn-warning" onclick="reserveBook(${b.id})">Reserve</button>`;
+				}
+
+				return `
+			        <div class="col-md-3 col-sm-6">
+			            <div class="book-card">
+			                <div class="d-flex justify-content-between align-items-start mb-2">
+			                    <span class="badge bg-secondary">${esc(b.genre)}</span>
+			                    <span class="badge ${b.available ? 'bg-success' : 'bg-danger'}">${b.available ? 'Available' : 'Borrowed'}</span>
+			                </div>
+			                <h6>${esc(b.title)}</h6>
+			                <p class="author mb-2">${esc(b.author)}</p>
+			                <p class="text-muted" style="font-size:0.75rem">ISBN: ${esc(b.isbn)}</p>
+			                ${buttonHtml}
+			            </div>
+			        </div>
+			    `;
+			}).join('');
 
 			renderPagination(totalPages);
 		}
@@ -291,6 +313,7 @@
 				if (res.status === 201) {
 					const book = allBooks.find(b => b.id === id);
 					if (book) book.available = false;
+					borrowedBookIds.add(id);
 					filterBooks();
 					showToast('Book borrowed successfully! View it in My Books.', 'success');
 				} else if (res.status === 409) {
