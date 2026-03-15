@@ -90,6 +90,22 @@
 					Management</a>
 				<a href="create-account.html" id="manageUsersBtn" class="btn btn-outline-secondary btn-sm d-none">Manage
 					Users</a>
+				<div class="dropdown d-none" id="notificationBell">
+					<a href="#" class="btn btn-outline-secondary btn-sm position-relative" data-bs-toggle="dropdown"
+						onclick="markNotificationsRead()">
+						<i class="bi bi-bell"></i>
+						<span
+							class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
+							id="notificationBadge">0</span>
+					</a>
+					<ul class="dropdown-menu dropdown-menu-end" id="notificationDropdown" style="min-width:300px">
+						<li>
+							<h6 class="dropdown-header">Notifications</h6>
+						</li>
+						<li id="noNotificationsMsg"><span class="dropdown-item text-muted small">No new
+								notifications</span></li>
+					</ul>
+				</div>
 				<a href="/login.html" id="loginBtn" class="btn btn-primary btn-sm">Login</a>
 				<span id="navUsername" class="text-muted small d-none"></span>
 				<a href="#" onclick="logout()" id="logoutBtn" class="btn btn-outline-danger btn-sm d-none">Logout</a>
@@ -172,6 +188,56 @@
 			window.location.href = '/login.html';
 		}
 
+		async function loadNotifications() {
+			const token = getToken();
+			if (!token) return;
+
+			try {
+				const res = await fetch('/api/notifications/my', {headers: authHeaders()});
+				const notifications = await res.json();
+
+				const bell = document.getElementById('notificationBell');
+				const badge = document.getElementById('notificationBadge');
+				const dropdown = document.getElementById('notificationDropdown');
+				const noMsg = document.getElementById('noNotificationsMsg');
+
+				bell.classList.remove('d-none');
+
+				if (notifications.length > 0) {
+					badge.textContent = notifications.length;
+					badge.classList.remove('d-none');
+					noMsg.classList.add('d-none');
+
+					notifications.forEach(n => {
+						const li = document.createElement('li');
+						li.innerHTML = `<span class="dropdown-item small">${esc(n.message)}</span>`;
+						dropdown.appendChild(li);
+					});
+				}
+			} catch (e) { }
+		}
+
+		async function markNotificationsRead() {
+			try {
+				await fetch('/api/notifications/read', {
+					method: 'PATCH',
+					headers: authHeaders()
+				});
+				document.getElementById('notificationBadge').classList.add('d-none');
+			} catch (e) { }
+		}
+
+		function esc(str) {
+			return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+		}
+
+		function authHeaders() {
+			return {
+				'Content-Type': 'application/json',
+				'Authorization': 'Bearer ' + getToken()
+			};
+		}
+
 		document.addEventListener('DOMContentLoaded', () => {
 			const userName = localStorage.getItem('user_name');
 			const userRole = localStorage.getItem('user_role');
@@ -187,6 +253,8 @@
 					document.getElementById('bookMgmtBtn').classList.remove('d-none');
 				}
 			}
+
+			loadNotifications();
 		});
 	</script>
 </body>

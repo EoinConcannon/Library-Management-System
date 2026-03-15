@@ -76,6 +76,12 @@
 					<span class="badge bg-secondary ms-1" id="historyCount">0</span>
 				</a>
 			</li>
+			<li class="nav-item">
+				<a class="nav-link" id="reservationsTab" href="#" onclick="showTab('reservations')">
+					<i class="bi bi-bookmark me-1"></i> Reservations
+					<span class="badge bg-warning text-dark ms-1" id="reservationsCount">0</span>
+				</a>
+			</li>
 		</ul>
 
 		<!-- Currently Borrowed -->
@@ -113,6 +119,15 @@
 					</tbody>
 				</table>
 			</div>
+		</div>
+
+		<div id="reservationsPanel" class="d-none">
+			<div id="reservationsEmpty" class="alert alert-info d-none">
+				<i class="bi bi-info-circle me-2"></i>
+				You have no active reservations.
+				<a href="catalogue.html" class="alert-link ms-1">Browse the catalogue</a> to reserve a book.
+			</div>
+			<div class="row g-3" id="reservationsGrid"></div>
 		</div>
 	</div>
 
@@ -303,10 +318,91 @@
 			activeTab = tab;
 			document.getElementById('currentPanel').classList.toggle('d-none', tab !== 'current');
 			document.getElementById('historyPanel').classList.toggle('d-none', tab !== 'history');
+			document.getElementById('reservationsPanel').classList.toggle('d-none', tab !== 'reservations');
 			document.getElementById('currentTab').classList.toggle('active', tab === 'current');
 			document.getElementById('historyTab').classList.toggle('active', tab === 'history');
+			document.getElementById('reservationsTab').classList.toggle('active', tab === 'reservations');
 
 			if (tab === 'history') loadHistory();
+			if (tab === 'reservations') loadReservations();
+		}
+
+		async function loadReservations() {
+			try {
+				const res = await fetch('/api/reservations/my', {headers: authHeaders()});
+				const reservations = await res.json();
+				renderReservations(reservations);
+			} catch (e) {
+				renderReservations([]);
+			}
+		}
+
+		function renderReservations(reservations) {
+			const grid = document.getElementById('reservationsGrid');
+			const empty = document.getElementById('reservationsEmpty');
+			document.getElementById('reservationsCount').textContent = reservations.length;
+
+			if (reservations.length === 0) {
+				empty.classList.remove('d-none');
+				grid.innerHTML = '';
+				return;
+			}
+
+			empty.classList.add('d-none');
+			grid.innerHTML = reservations.map(r => `
+		        <div class="col-md-4 col-sm-6" id="reservation-${r.id}">
+		            <div class="card p-3 h-100">
+		                <div class="d-flex justify-content-between align-items-start mb-2">
+		                    <span class="badge bg-secondary">${esc(r.genre)}</span>
+		                    <span class="badge bg-warning text-dark">
+		                        <i class="bi bi-bookmark me-1"></i>Reserved
+		                    </span>
+		                </div>
+		                <h6 class="fw-semibold mb-1">${esc(r.title)}</h6>
+		                <p class="text-muted small mb-2">${esc(r.author)}</p>
+		                <p class="text-muted" style="font-size:0.75rem">ISBN: ${esc(r.isbn)}</p>
+		                <hr class="my-2"/>
+		                <div class="text-muted small mb-3">
+		                    <i class="bi bi-calendar3 me-1"></i>
+		                    Reserved on: <strong>${formatDate(r.reservedDate)}</strong>
+		                </div>
+		                <button class="btn btn-outline-danger btn-sm w-100 mt-auto"
+		                    onclick="cancelReservation(${r.id}, '${esc(r.title)}')">
+		                    <i class="bi bi-x-circle me-1"></i>Cancel Reservation
+		                </button>
+		            </div>
+		        </div>
+		    `).join('');
+		}
+
+		async function cancelReservation(reservationId, title) {
+			if (!confirm(`Cancel reservation for "${title}"?`)) return;
+
+			try {
+				const res = await fetch(`/api/reservations/${reservationId}`, {
+					method: 'DELETE',
+					headers: authHeaders()
+				});
+
+				if (res.status === 204) {
+					const card = document.getElementById(`reservation-${reservationId}`);
+					if (card) card.remove();
+
+					const countEl = document.getElementById('reservationsCount');
+					const newCount = parseInt(countEl.textContent) - 1;
+					countEl.textContent = newCount;
+
+					if (newCount === 0) {
+						document.getElementById('reservationsEmpty').classList.remove('d-none');
+					}
+
+					showToast('Reservation cancelled.', 'success');
+				} else {
+					showToast('Could not cancel reservation. Please try again.', 'danger');
+				}
+			} catch (e) {
+				showToast('Could not connect to server.', 'danger');
+			}
 		}
 
 		function formatDate(dateArray) {

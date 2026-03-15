@@ -220,10 +220,10 @@
 		                <h6>${esc(b.title)}</h6>
 		                <p class="author mb-2">${esc(b.author)}</p>
 		                <p class="text-muted" style="font-size:0.75rem">ISBN: ${esc(b.isbn)}</p>
-		                <button class="btn btn-sm w-100 mt-1 ${b.available ? 'btn-primary' : 'btn-secondary'}"
-		                    ${b.available ? `onclick="borrowBook(${b.id})"` : 'disabled'}>
-		                   	${b.available ? 'Borrow' : 'Unavailable'}
-		                </button>
+						<button class="btn btn-sm w-100 mt-1 ${b.available ? 'btn-primary' : 'btn-warning'}"
+						    onclick="${b.available ? `borrowBook(${b.id})` : `reserveBook(${b.id})`}">
+						    ${b.available ? 'Borrow' : 'Reserve'}
+						</button>
 		            </div>
 		        </div>
 		    `).join('');
@@ -295,6 +295,29 @@
 					showToast('Book borrowed successfully! View it in My Books.', 'success');
 				} else if (res.status === 409) {
 					showToast('This book is no longer available.', 'danger');
+				} else {
+					showToast('Something went wrong. Please try again.', 'danger');
+				}
+			} catch (e) {
+				showToast('Could not connect to server.', 'danger');
+			}
+		}
+
+		async function reserveBook(id) {
+			const userRole = localStorage.getItem('user_role');
+			if (!userRole) {window.location.href = '/login.html'; return;}
+
+			try {
+				const res = await fetch(`/api/reservations/${id}`, {
+					method: 'POST',
+					headers: authHeaders()
+				});
+
+				if (res.status === 201) {
+					showToast('Book reserved successfully! You will be notified when it is available.', 'success');
+				} else if (res.status === 409) {
+					const data = await res.json();
+					showToast(data.error || 'Could not reserve this book.', 'warning');
 				} else {
 					showToast('Something went wrong. Please try again.', 'danger');
 				}
