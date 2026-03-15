@@ -189,9 +189,10 @@
 					</execution>
 				</executions>
 				<configuration>
-					<includes>
-						<include>**/*IT.java</include>
-					</includes>
+				    <includes>
+				        <include>**/*IT.java</include>
+				        <include>**/*IntegrationTest.java</include>
+				    </includes>
 				</configuration>
 			</plugin>
 
