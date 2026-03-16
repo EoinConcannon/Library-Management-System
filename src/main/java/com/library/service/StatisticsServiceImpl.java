@@ -57,25 +57,18 @@ public class StatisticsServiceImpl implements StatisticsService {
 				}).collect(Collectors.toList());
 		response.setMostBorrowedBooks(mostBorrowed);
 
-		// Borrowings by genre
-		Map<String, Long> genreCounts = allBorrowings.stream()
-				.collect(Collectors.groupingBy(b -> b.getBook().getGenre(), Collectors.counting()));
-
-		List<Map<String, Object>> byGenre = genreCounts.entrySet().stream()
-				.sorted(Map.Entry.<String, Long>comparingByValue().reversed()).map(e -> {
-					Map<String, Object> m = new LinkedHashMap<>();
-					m.put("genre", e.getKey());
-					m.put("count", e.getValue());
-					return m;
-				}).collect(Collectors.toList());
-		response.setBorrowingsByGenre(byGenre);
-
-		// Borrowings trend — by month (last 6 months)
-		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM yyyy");
+		// Borrowings trend — by day
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy");
 		Map<String, Long> trendCounts = allBorrowings.stream()
 				.collect(Collectors.groupingBy(b -> b.getBorrowedDate().format(formatter), Collectors.counting()));
 
-		List<Map<String, Object>> trend = trendCounts.entrySet().stream().map(e -> {
+		List<Map<String, Object>> trend = trendCounts.entrySet().stream().sorted(Comparator.comparing(e -> {
+			try {
+				return java.time.LocalDate.parse(e.getKey(), formatter);
+			} catch (Exception ex) {
+				return java.time.LocalDate.MIN;
+			}
+		})).map(e -> {
 			Map<String, Object> m = new LinkedHashMap<>();
 			m.put("month", e.getKey());
 			m.put("count", e.getValue());
