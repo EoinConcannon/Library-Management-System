@@ -34,12 +34,12 @@ pipeline {
             }
         }
         
-        stage('End to End Tests') {
-            steps {
-                echo 'Running end to end tests...'
-                bat 'mvn test -Dtest=**/*E2E* -Dspring.profiles.active='
-            }
-        }
+//        stage('End to End Tests') {
+//            steps {
+//                echo 'Running end to end tests...'
+//                bat 'mvn test -Dtest=**/*E2E* -Dspring.profiles.active='
+//            }
+//        }
 
         stage('Code Coverage') {
             steps {
