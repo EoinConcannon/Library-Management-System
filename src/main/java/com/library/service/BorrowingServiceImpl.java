@@ -22,6 +22,7 @@ public class BorrowingServiceImpl implements BorrowingService {
 	private final BorrowedBookRepository borrowedBookRepository;
 	private final BookRepository bookRepository;
 	private final UserRepository userRepository;
+	private final ReservationServiceImpl reservationService;
 
 	@Override
 	public BorrowedBookResponse borrowBook(Long bookId, String userEmail) {
@@ -67,12 +68,10 @@ public class BorrowingServiceImpl implements BorrowingService {
 		BorrowedBook borrowedBook = borrowedBookRepository.findById(borrowingId)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Borrowing record not found"));
 
-		// Scenario 2 - ensure the borrowing belongs to the requesting user
 		if (!borrowedBook.getUser().getEmail().equals(userEmail)) {
 			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot return books you have not borrowed");
 		}
 
-		// Already returned
 		if (borrowedBook.getReturnedDate() != null) {
 			throw new ResponseStatusException(HttpStatus.CONFLICT, "This book has already been returned");
 		}
@@ -83,6 +82,9 @@ public class BorrowingServiceImpl implements BorrowingService {
 		Book book = borrowedBook.getBook();
 		book.setAvailable(true);
 		bookRepository.save(book);
+
+		// Notify first person in reservation queue
+		reservationService.notifyNextInQueue(book);
 
 		return toResponse(borrowedBook);
 	}
