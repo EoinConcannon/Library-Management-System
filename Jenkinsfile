@@ -33,6 +33,13 @@ pipeline {
                 bat 'mvn failsafe:integration-test failsafe:verify -Dspring.profiles.active='
             }
         }
+        
+        stage('End to End Tests') {
+            steps {
+                echo 'Running end to end tests...'
+                bat 'mvn test -Dtest=**/*E2E* -Dspring.profiles.active='
+            }
+        }
 
         stage('Code Coverage') {
             steps {
@@ -58,11 +65,19 @@ pipeline {
     }
 
     post {
-        always {
-            junit allowEmptyResults: true,
-                  testResults: '**/target/surefire-reports/*.xml'
-            junit allowEmptyResults: true,
-                  testResults: '**/target/failsafe-reports/*.xml'
-        }
+    always {
+        junit allowEmptyResults: true,
+              testResults: '**/target/surefire-reports/*.xml'
+        junit allowEmptyResults: true,
+              testResults: '**/target/failsafe-reports/*.xml'
+        publishHTML(target: [
+            allowMissing: true,
+            alwaysLinkToLastBuild: true,
+            keepAll: true,
+            reportDir: 'target/site/jacoco',
+            reportFiles: 'index.html',
+            reportName: 'JaCoCo Code Coverage'
+        ])
     }
+}
 }
