@@ -127,6 +127,41 @@
 			<artifactId>h2</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- Selenium -->
+		<dependency>
+			<groupId>org.seleniumhq.selenium</groupId>
+			<artifactId>selenium-java</artifactId>
+			<version>4.18.1</version>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- Cucumber -->
+		<dependency>
+			<groupId>io.cucumber</groupId>
+			<artifactId>cucumber-java</artifactId>
+			<version>7.15.0</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.cucumber</groupId>
+			<artifactId>cucumber-junit-platform-engine</artifactId>
+			<version>7.15.0</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.junit.platform</groupId>
+			<artifactId>junit-platform-suite</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- WebDriverManager — auto downloads ChromeDriver, no manual setup
+		needed -->
+		<dependency>
+			<groupId>io.github.bonigarcia</groupId>
+			<artifactId>webdrivermanager</artifactId>
+			<version>5.7.0</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -189,10 +224,10 @@
 					</execution>
 				</executions>
 				<configuration>
-				    <includes>
-				        <include>**/*IT.java</include>
-				        <include>**/*IntegrationTest.java</include>
-				    </includes>
+					<includes>
+						<include>**/*IT.java</include>
+						<include>**/*IntegrationTest.java</include>
+					</includes>
 				</configuration>
 			</plugin>
 

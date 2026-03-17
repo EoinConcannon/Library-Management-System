@@ -34,12 +34,21 @@ pipeline {
             }
         }
         
-//        stage('End to End Tests') {
-//            steps {
-//                echo 'Running end to end tests...'
-//                bat 'mvn test -Dtest=**/*E2E* -Dspring.profiles.active='
-//            }
-//        }
+        stage('End to End Tests') {
+    steps {
+        echo 'Starting application for E2E tests...'
+        bat 'start /B mvn spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=test"'
+        bat 'timeout /t 30 /nobreak'
+        echo 'Running end to end tests...'
+        bat 'mvn test -Dtest=CucumberRunnerE2E -Dspring.profiles.active='
+    }
+    post {
+        always {
+            echo 'Stopping application...'
+            bat 'FOR /F "tokens=5" %P IN (\'netstat -ano ^| findstr :8080\') DO taskkill /PID %P /F'
+        }
+    }
+}
 
         stage('Code Coverage') {
             steps {
