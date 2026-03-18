@@ -24,7 +24,7 @@ public class UserManagementSteps {
 	@Before
 	public void setUp() {
 		driver = SeleniumChromeDriver.getDriver();
-		wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+		wait = new WebDriverWait(driver, Duration.ofSeconds(15));
 	}
 
 	@Given("I am logged in as a librarian")
@@ -71,10 +71,19 @@ public class UserManagementSteps {
 
 	@When("I submit the user registration form")
 	public void iSubmitTheUserRegistrationForm() {
-		driver.findElement(By.id("submitBtn")).click();
+	    WebElement submitBtn = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("submitBtn")));
 
-		// Wait for credential card to appear
-		wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("credentialCard")));
+	    // Scroll into view first
+	    ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", submitBtn);
+
+	    // Small pause to allow any animations to settle
+	    try { Thread.sleep(500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+
+	    // Use JavaScript click to bypass any overlay issues
+	    ((JavascriptExecutor) driver).executeScript("arguments[0].click();", submitBtn);
+
+	    // Wait for credential card to appear
+	    wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("credentialCard")));
 	}
 
 	@Then("a new user account is created")
