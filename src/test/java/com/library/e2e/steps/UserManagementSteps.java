@@ -20,6 +20,8 @@ public class UserManagementSteps {
 	private WebDriver driver;
 	private WebDriverWait wait;
 	private static final String BASE_URL = "http://localhost:8080";
+	
+	private String lastUsedEmail;
 
 	@Before
 	public void setUp() {
@@ -54,36 +56,43 @@ public class UserManagementSteps {
 
 	@When("I fill in the user registration form with name {string}, email {string} and role {string}")
 	public void iFillInTheUserRegistrationForm(String name, String email, String role) {
-		// Clear and fill name
-		WebElement nameField = driver.findElement(By.id("fullName"));
-		nameField.clear();
-		nameField.sendKeys(name);
+	    // Make email unique per run to avoid duplicate conflicts
+	    String uniqueEmail = email.replace("@", System.currentTimeMillis() + "@");
+	    lastUsedEmail = uniqueEmail;
 
-		// Clear and fill email
-		WebElement emailField = driver.findElement(By.id("email"));
-		emailField.clear();
-		emailField.sendKeys(email);
+	    WebElement nameField = driver.findElement(By.id("fullName"));
+	    nameField.clear();
+	    nameField.sendKeys(name);
 
-		// Select role
-		Select roleSelect = new Select(driver.findElement(By.id("roleSelect")));
-		roleSelect.selectByValue(role);
+	    WebElement emailField = driver.findElement(By.id("email"));
+	    emailField.clear();
+	    emailField.sendKeys(uniqueEmail);
+
+	    Select roleSelect = new Select(driver.findElement(By.id("roleSelect")));
+	    roleSelect.selectByValue(role);
 	}
 
 	@When("I submit the user registration form")
 	public void iSubmitTheUserRegistrationForm() {
 	    WebElement submitBtn = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("submitBtn")));
 
-	    // Scroll into view first
 	    ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", submitBtn);
 
-	    // Small pause to allow any animations to settle
 	    try { Thread.sleep(500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
 
-	    // Use JavaScript click to bypass any overlay issues
 	    ((JavascriptExecutor) driver).executeScript("arguments[0].click();", submitBtn);
 
-	    // Wait for credential card to appear
-	    wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("credentialCard")));
+	    // Wait for either success or error
+	    wait.until(ExpectedConditions.or(
+	        ExpectedConditions.visibilityOfElementLocated(By.id("credentialCard")),
+	        ExpectedConditions.visibilityOfElementLocated(By.id("alertError"))
+	    ));
+
+	    // If error shown, log it and fail with a meaningful message
+	    WebElement errorAlert = driver.findElement(By.id("alertError"));
+	    if (errorAlert.isDisplayed()) {
+	        throw new RuntimeException("User creation failed: " + errorAlert.getText());
+	    }
 	}
 
 	@Then("a new user account is created")
