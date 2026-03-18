@@ -37,7 +37,7 @@ pipeline {
         stage('End to End Tests') {
     steps {
         echo 'Starting application for E2E tests...'
-        bat 'start /B mvn spring-boot:run'
+        bat 'start /B mvn spring-boot:run -Dspring-boot.run.jvmArguments="-Djwt.secret=thisisatestjwtsecretthatisfullylongenoughtosatisfyhmacsha256requirements -Djwt.expiration=86400000"'
         bat 'ping -n 45 127.0.0.1 > nul'
         echo 'Running end to end tests...'
         bat 'mvn test -Dtest=CucumberRunnerE2E'
@@ -45,11 +45,7 @@ pipeline {
     post {
         always {
             echo 'Stopping application...'
-            bat '''
-                FOR /F "tokens=5" %%P IN ('netstat -ano ^| findstr ":8080"') DO (
-                    taskkill /PID %%P /F
-                )
-            '''
+            bat 'FOR /F "tokens=5" %%P IN (\'netstat -ano ^| findstr ":8080"\') DO taskkill /PID %%P /F 2>nul & exit /b 0'
         }
     }
 }
