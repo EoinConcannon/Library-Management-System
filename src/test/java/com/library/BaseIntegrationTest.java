@@ -11,6 +11,7 @@ public abstract class BaseIntegrationTest {
 	private int port;
 
 	@BeforeEach
+	protected
 	void setUp() {
 		RestAssured.port = port;
 		RestAssured.baseURI = "http://localhost";

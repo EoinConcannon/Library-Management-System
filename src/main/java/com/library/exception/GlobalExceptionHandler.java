@@ -41,4 +41,5 @@ public class GlobalExceptionHandler {
 		error.put("error", ex.getMessage());
 		return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
 	}
+	
 }
